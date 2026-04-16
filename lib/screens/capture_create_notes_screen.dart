@@ -45,6 +45,7 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final horizontalPadding = width < 380 ? 18.0 : 24.0;
+    final heroHeight = width < 380 ? 200.0 : 220.0;
 
     final items = <Widget>[
       const SizedBox(height: 12),
@@ -59,13 +60,16 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
       const _SectionLabel(title: 'Capture'),
       _FadeInOnBuild(
         delay: const Duration(milliseconds: 40),
-        child: _HeroCaptureCard(
-          heroTag: _captureHeroTag,
-          onTap: () => Navigator.of(context).pushNamed(AppRoutes.smartCamera),
-          navy: _navy,
-          royal: _royal,
-          radius: _radius,
-          ambient: _ambient,
+        child: SizedBox(
+          height: heroHeight,
+          child: _HeroCaptureCard(
+            heroTag: _captureHeroTag,
+            onTap: () => Navigator.of(context).pushNamed(AppRoutes.smartCamera),
+            navy: _navy,
+            royal: _royal,
+            radius: _radius,
+            ambient: _ambient,
+          ),
         ),
       ),
 
@@ -346,7 +350,7 @@ class _PressableSurfaceState extends State<_PressableSurface> {
   }
 }
 
-class _HeroCaptureCard extends StatelessWidget {
+class _HeroCaptureCard extends StatefulWidget {
   const _HeroCaptureCard({
     required this.heroTag,
     required this.onTap,
@@ -364,56 +368,97 @@ class _HeroCaptureCard extends StatelessWidget {
   final Animation<double> ambient;
 
   @override
+  State<_HeroCaptureCard> createState() => _HeroCaptureCardState();
+}
+
+class _HeroCaptureCardState extends State<_HeroCaptureCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _shimmerController;
+
+  @override
+  void initState() {
+    super.initState();
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _shimmerController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final decoration = BoxDecoration(
       gradient: LinearGradient(
-        colors: [navy, royal],
+        colors: [widget.navy, widget.royal],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),
-      borderRadius: BorderRadius.circular(radius),
+      borderRadius: BorderRadius.circular(widget.radius),
       boxShadow: [
         BoxShadow(
-          color: royal.withOpacity(0.22),
+          color: widget.royal.withOpacity(0.22),
           blurRadius: 26,
           offset: const Offset(0, 16),
         ),
       ],
     );
-    final width = MediaQuery.sizeOf(context).width;
-    final aspectRatio = width < 360 ? 1.6 : 16 / 9;
 
     return Hero(
-      tag: heroTag,
+      tag: widget.heroTag,
       child: _PressableSurface(
-        onTap: onTap,
-        borderRadius: radius,
-        scaleDown: 0.99,
+        onTap: widget.onTap,
+        borderRadius: widget.radius,
+        scaleDown: 0.985,
         decoration: decoration,
-        child: AspectRatio(
-          aspectRatio: aspectRatio,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(radius),
-            child: Stack(
-              children: [
-                // Abstract background pattern with subtle waves
-                Positioned.fill(
-                  child: CustomPaint(
-                    painter: _CaptureCardWavePainter(),
-                  ),
-                ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final cardWidth = constraints.maxWidth;
+            final cardHeight = constraints.maxHeight;
+            final minPadding = cardWidth < 300 ? 14.0 : 20.0;
+            final topBottomPadding = cardHeight < 140 ? 12.0 : 18.0;
 
-                  // Glass overlay
+            return ClipRRect(
+              borderRadius: BorderRadius.circular(widget.radius),
+              child: Stack(
+                children: [
+                  // Gradient background
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [widget.navy, widget.royal],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Abstract wave pattern (clipped)
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _CaptureCardWavePainter(
+                        maxSize: cardWidth * 0.4,
+                      ),
+                    ),
+                  ),
+
+                  // Glass/blur overlay
                   Positioned.fill(
                     child: BackdropFilter(
-                      filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      filter: ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                       child: Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              Colors.white.withOpacity(0.10),
-                              Colors.white.withOpacity(0.04),
-                              Colors.white.withOpacity(0.06),
+                              Colors.white.withOpacity(0.08),
+                              Colors.white.withOpacity(0.03),
+                              Colors.white.withOpacity(0.05),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
@@ -423,35 +468,72 @@ class _HeroCaptureCard extends StatelessWidget {
                     ),
                   ),
 
-                  // Content
+                  // Shimmer glow overlay
+                  AnimatedBuilder(
+                    animation: _shimmerController,
+                    builder: (context, child) {
+                      final value = _shimmerController.value;
+                      return Opacity(
+                        opacity: (math.sin(value * math.pi * 2) + 1) * 0.06,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.white.withOpacity(0.2),
+                                Colors.transparent,
+                                Colors.white.withOpacity(0.2),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+
+                  // Floating particles (optional, light accent)
+                  Positioned.fill(
+                    child: _buildFloatingAccents(cardWidth, cardHeight),
+                  ),
+
+                  // Main content
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 22, 20, 16),
+                    padding: EdgeInsets.fromLTRB(
+                      minPadding,
+                      topBottomPadding,
+                      minPadding,
+                      topBottomPadding,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Icon chip with pulse
                         AnimatedBuilder(
-                          animation: ambient,
+                          animation: widget.ambient,
                           builder: (context, child) {
-                            final t = ambient.value * math.pi * 2;
-                            final pulse = 1 + 0.04 * math.sin(t);
-                            final glow = 0.12 + 0.12 * ((math.sin(t) + 1) / 2);
+                            final t = widget.ambient.value * math.pi * 2;
+                            final pulse = 1 + 0.05 * math.sin(t);
+                            final glowOpacity = 0.10 +
+                                0.14 * ((math.sin(t) + 1) / 2);
                             return Transform.scale(
                               scale: pulse,
                               child: Container(
-                                width: 62,
-                                height: 62,
+                                width: 56,
+                                height: 56,
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.18),
-                                  borderRadius: BorderRadius.circular(22),
+                                  color: Colors.white.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(18),
                                   border: Border.all(
-                                    color: Colors.white.withOpacity(0.20),
-                                    width: 1,
+                                    color: Colors.white.withOpacity(0.25),
+                                    width: 1.2,
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: royal.withOpacity(glow),
-                                      blurRadius: 18,
-                                      spreadRadius: 2,
+                                      color: widget.royal
+                                          .withOpacity(glowOpacity),
+                                      blurRadius: 16,
+                                      spreadRadius: 1,
                                     ),
                                   ],
                                 ),
@@ -462,34 +544,50 @@ class _HeroCaptureCard extends StatelessWidget {
                           child: const Icon(
                             Icons.camera_alt_outlined,
                             color: Colors.white,
-                            size: 30,
+                            size: 26,
                           ),
                         ),
-                        const SizedBox(height: 14),
-                        const Text(
-                          'Capture Board Image',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.2,
+
+                        const SizedBox(height: 12),
+
+                        // Title and subtitle (flex to prevent overflow)
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Capture Board Image',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.15,
+                                  height: 1.1,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Flexible(
+                                child: Text(
+                                  'Scan classroom board with AI-powered OCR',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.82),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.25,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Scan classroom board using AI-powered OCR',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.80),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            height: 1.3,
-                          ),
-                        ),
-                        const Spacer(),
+
+                        const SizedBox(height: 10),
+
+                        // Bottom row: status text + CTA button
                         Row(
                           children: [
                             Expanded(
@@ -498,22 +596,15 @@ class _HeroCaptureCard extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.76),
-                                  fontSize: 12,
+                                  color: Colors.white.withOpacity(0.75),
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.1,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: _PillActionButton(
-                                label: 'Open Camera',
-                                background: Colors.white.withOpacity(0.16),
-                                foreground: Colors.white,
-                                border: Colors.white.withOpacity(0.22),
-                                onTap: onTap,
-                              ),
-                            ),
+                            const SizedBox(width: 10),
+                            _buildGlassCTAButton(),
                           ],
                         ),
                       ],
@@ -521,27 +612,130 @@ class _HeroCaptureCard extends StatelessWidget {
                   ),
                 ],
               ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGlassCTAButton() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: widget.onTap,
+        customBorder: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.28),
+              width: 1,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.white.withOpacity(0.08),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Open',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.15,
+                ),
+              ),
+              const SizedBox(width: 5),
+              Icon(
+                Icons.arrow_forward_rounded,
+                color: Colors.white.withOpacity(0.88),
+                size: 14,
+              ),
+            ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildFloatingAccents(double width, double height) {
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: widget.ambient,
+        builder: (context, child) {
+          final t = widget.ambient.value * 0.5;
+          return Stack(
+            children: [
+              Positioned(
+                right: width * 0.08,
+                top: height * 0.15,
+                child: Opacity(
+                  opacity: (math.sin(t * math.pi * 2) + 1) * 0.04,
+                  child: Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                right: width * 0.16,
+                top: height * 0.65,
+                child: Opacity(
+                  opacity: (math.sin((t + 0.5) * math.pi * 2) + 1) * 0.03,
+                  child: Container(
+                    width: 4,
+                    height: 4,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }
 
 class _CaptureCardWavePainter extends CustomPainter {
+  final double maxSize;
+
+  _CaptureCardWavePainter({this.maxSize = 0});
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.06)
+      ..color = Colors.white.withOpacity(0.05)
       ..style = PaintingStyle.fill;
 
-    // Soft wave pattern on background
-    for (int i = 0; i < 3; i++) {
-      final offset = Offset(
-        size.width * (0.3 + i * 0.3),
-        size.height * (0.5 - i * 0.1),
-      );
-      canvas.drawCircle(offset, size.width * (0.25 - i * 0.05), paint);
+    // Clipped wave pattern - constrain to safe area
+    final safeRadius = math.min(size.width * 0.22, maxSize > 0 ? maxSize : 200);
+    final positions = [
+      Offset(size.width * 0.25, size.height * 0.55),
+      Offset(size.width * 0.7, size.height * 0.35),
+      Offset(size.width * 0.5, size.height * 0.8),
+    ];
+
+    for (final pos in positions) {
+      canvas.drawCircle(pos, safeRadius * 0.85, paint);
     }
   }
 
