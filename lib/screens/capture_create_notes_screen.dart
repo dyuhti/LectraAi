@@ -86,7 +86,7 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
         staggerBaseMs: 120,
         onUpload: () => Navigator.of(context).pushNamed(AppRoutes.fileUpload),
         onRecord: () => Navigator.of(context).pushNamed(AppRoutes.recordAudio),
-        onQuiz: () => Navigator.of(context).pushNamed(AppRoutes.practiceQuiz),
+        onQuiz: () => Navigator.of(context).pushNamed(AppRoutes.generateQuiz),
         onAnalytics:
             () => Navigator.of(context).pushNamed(AppRoutes.studyAnalytics),
       ),

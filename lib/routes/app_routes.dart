@@ -26,6 +26,7 @@ class AppRoutes {
   static const String generateQuiz = '/generate-quiz';
   static const String practiceQuiz = '/practice-quiz';
   static const String quizResults = '/quiz-results';
+  static const String reviewAnswers = '/review-answers';
 
   // Learning Features
   static const String revisionReminder = '/revision-reminder';
@@ -52,6 +53,7 @@ class AppRoutes {
       generateQuiz: 'Generate Quiz',
       practiceQuiz: 'Practice Quiz',
       quizResults: 'Quiz Results',
+      reviewAnswers: 'Review Answers',
       revisionReminder: 'Revision Reminder',
       studyAnalytics: 'Study Analytics',
       profile: 'Profile',

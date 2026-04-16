@@ -12,8 +12,10 @@ import 'package:smart_lecture_notes/screens/record_lecture_screen.dart';
 import 'package:smart_lecture_notes/screens/preview_document_screen.dart';
 import 'package:smart_lecture_notes/screens/my_notes_screen.dart';
 import 'package:smart_lecture_notes/screens/note_detail_screen.dart';
+import 'package:smart_lecture_notes/screens/generate_quiz_screen.dart';
 import 'package:smart_lecture_notes/screens/practice_quiz_screen.dart';
 import 'package:smart_lecture_notes/screens/quiz_results_screen.dart';
+import 'package:smart_lecture_notes/screens/review_answers_screen.dart';
 import 'package:smart_lecture_notes/screens/revision_reminders_screen.dart';
 import 'package:smart_lecture_notes/screens/study_dashboard_screen.dart';
 import 'package:smart_lecture_notes/screens/settings_screen.dart';
@@ -75,19 +77,16 @@ class RouteGenerator {
 
       // Quiz System
       case AppRoutes.generateQuiz:
-        return _buildRoute(const PracticeQuizScreen());
+        return _buildRoute(const GenerateQuizScreen());
 
       case AppRoutes.practiceQuiz:
         return _buildRoute(const PracticeQuizScreen());
 
       case AppRoutes.quizResults:
-        // QuizResultsScreen requires questions, correctCount, totalCount parameters
-        // These should be passed as arguments from previous screen
-        return _buildRoute(const QuizResultsScreen(
-          questions: [],
-          correctCount: 0,
-          totalCount: 0,
-        ));
+        return _buildRoute(const QuizResultsScreen());
+
+      case AppRoutes.reviewAnswers:
+        return _buildRoute(const ReviewAnswersScreen());
 
       // Learning Features
       case AppRoutes.revisionReminder:

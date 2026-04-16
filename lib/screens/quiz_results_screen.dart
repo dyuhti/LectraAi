@@ -1,17 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'practice_quiz_screen.dart';
-import 'review_answers_screen.dart';
-import 'package:smart_lecture_notes/theme/app_theme.dart';
+import 'package:provider/provider.dart';
+import 'package:smart_lecture_notes/providers/quiz_provider.dart';
+import 'package:smart_lecture_notes/routes/app_routes.dart';
+import 'package:smart_lecture_notes/theme/quiz_theme.dart';
 
 class QuizResultsScreen extends StatefulWidget {
-  final List<QuizQuestion> questions;
-  final int correctCount;
-  final int totalCount;
-
-  const QuizResultsScreen({
-    required this.questions, required this.correctCount, required this.totalCount, Key? key,
-  }) : super(key: key);
+  const QuizResultsScreen({Key? key}) : super(key: key);
 
   @override
   State<QuizResultsScreen> createState() => _QuizResultsScreenState();
@@ -19,7 +13,7 @@ class QuizResultsScreen extends StatefulWidget {
 
 class _QuizResultsScreenState extends State<QuizResultsScreen>
     with SingleTickerProviderStateMixin {
-  late AnimationController _scaleController;
+  late final AnimationController _scaleController;
 
   @override
   void initState() {
@@ -36,223 +30,213 @@ class _QuizResultsScreenState extends State<QuizResultsScreen>
     super.dispose();
   }
 
-  int get scorePercentage =>
-      ((widget.correctCount / widget.totalCount) * 100).toInt();
-
-  String get feedbackMessage {
-    if (scorePercentage >= 80) {
-      return '🎉 Excellent! Keep it up!';
-    } else if (scorePercentage >= 60) {
-      return '👍 Good attempt! Need more practice.';
-    } else if (scorePercentage >= 40) {
-      return '📚 Keep practicing!';
-    } else {
-      return '⚠️ Try again later.';
-    }
-  }
-
-  Color get scoreColor {
-    if (scorePercentage >= 80) {
-      return AppColors.primary;
-    }
-    return AppColors.primaryLight;
-  }
-
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<QuizProvider>();
+    final totalCount = provider.questions.length;
+    final correctCount = provider.correctCount;
+    final scorePercentage = totalCount == 0
+        ? 0
+        : ((correctCount / totalCount) * 100).round();
+
     return Scaffold(
+      backgroundColor: QuizColors.softBackground,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: QuizColors.softBackground,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.primary),
-          onPressed: () => Get.back(),
+          icon: const Icon(Icons.arrow_back, color: QuizColors.navy),
+          onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: const Text(
           'Quiz Results',
           style: TextStyle(
-            color: AppColors.primary,
+            color: QuizColors.navy,
             fontSize: 18,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w800,
           ),
         ),
         centerTitle: false,
       ),
       body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 20),
-
-              // Score Card with Animation
-              ScaleTransition(
-                scale: Tween<double>(begin: 0.5, end: 1.0)
-                    .animate(_scaleController),
-                child: Container(
-                  padding: const EdgeInsets.all(32),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
-                        blurRadius: 15,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      // Trophy Icon
-                      Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryLight.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(50),
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.emoji_events,
-                            size: 60,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Your Score Text
-                      const Text(
-                        'Your Score',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Score Percentage
-                      RichText(
-                        text: TextSpan(
-                          children: [
-                            TextSpan(
-                              text: '$scorePercentage',
-                              style: TextStyle(
-                                fontSize: 56,
-                                fontWeight: FontWeight.bold,
-                                color: scoreColor,
-                                letterSpacing: 1,
-                              ),
-                            ),
-                            TextSpan(
-                              text: '%',
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w600,
-                                color: scoreColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Correct Count
-                      Text(
-                        '${widget.correctCount} out of ${widget.totalCount} correct',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Feedback Message
-              Container(
-                padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+        child: Column(
+          children: [
+            ScaleTransition(
+              scale: Tween<double>(begin: 0.8, end: 1.0)
+                  .animate(_scaleController),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryLight.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: AppColors.primaryLight.withOpacity(0.4),
-                    width: 1.5,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Text(
-                      '📚',
-                      style: TextStyle(fontSize: 20),
+                  color: QuizColors.cardWhite,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    const BoxShadow(
+                      color: QuizColors.shadowColor,
+                      blurRadius: 22,
+                      offset: Offset(0, 12),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        feedbackMessage,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    SizedBox(
+                      width: 120,
+                      height: 120,
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween<double>(
+                          begin: 0,
+                          end: scorePercentage / 100,
                         ),
+                        duration: const Duration(milliseconds: 900),
+                        builder: (context, value, _) {
+                          return Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              CircularProgressIndicator(
+                                value: value,
+                                strokeWidth: 8,
+                                backgroundColor: QuizColors.infoBg,
+                                color: QuizColors.royalStart,
+                              ),
+                              Text(
+                                '$scorePercentage%',
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  color: QuizColors.navy,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Your score',
+                      style: TextStyle(
+                        color: QuizColors.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '$correctCount out of $totalCount correct',
+                      style: const TextStyle(
+                        color: QuizColors.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 40),
-
-              // Review Answers Button
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Get.to(() => ReviewAnswersScreen(
-                          questions: widget.questions,
-                          correctCount: widget.correctCount,
-                        ));
-                  },
-                  style: AppButtonStyles.primary(radius: 16),
-                  child: const Text(
-                    'Review Answers',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+            ),
+            const SizedBox(height: 18),
+            _FeedbackChip(scorePercentage: scorePercentage),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: () =>
+                    Navigator.of(context).pushNamed(AppRoutes.reviewAnswers),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: QuizColors.successButton,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Text(
+                  'Review Answers',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
-
-              // Back to Home Button
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: () => Get.offAllNamed('/home'),
-                  style: AppButtonStyles.primary(radius: 16),
-                  child: const Text(
-                    'Back to Home',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: OutlinedButton(
+                onPressed: () {
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    AppRoutes.home,
+                    (route) => false,
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: QuizColors.textPrimary,
+                  side: const BorderSide(
+                    color: QuizColors.borderLight,
+                    width: 1.5,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Text(
+                  'Back to Home',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
-            ],
-          ),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+}
+
+class _FeedbackChip extends StatelessWidget {
+  const _FeedbackChip({required this.scorePercentage});
+
+  final int scorePercentage;
+
+  @override
+  Widget build(BuildContext context) {
+    final message = scorePercentage >= 80
+        ? 'Excellent performance. Keep pushing higher.'
+        : scorePercentage >= 60
+            ? 'Solid progress. Review a few key concepts.'
+            : scorePercentage >= 40
+                ? 'Keep practicing to strengthen recall.'
+                : 'Review the lecture notes and try again.';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: QuizColors.infoBg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: QuizColors.borderLight, width: 1.2),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.auto_awesome, color: QuizColors.navy, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: QuizColors.textSecondary,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

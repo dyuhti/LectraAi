@@ -28,6 +28,10 @@ dependencies:
   # Charts & Analytics Dashboard
   fl_chart: ^0.63.0
 
+  # Networking & State Management
+  http: ^1.2.2
+  provider: ^6.1.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
