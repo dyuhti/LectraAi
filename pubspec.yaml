@@ -1,0 +1,43 @@
+name: smart_lecture_notes
+description: An AI-powered educational productivity app that helps students capture, organize, summarize, and revise lecture content efficiently.
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # UI & Navigation
+  cupertino_icons: ^1.0.2
+  get: ^4.6.5
+  
+  # Audio Recording & Playback
+  record: ^6.2.0
+  path: ^1.8.3
+  
+  # Camera
+  camera: ^0.10.5+2
+  
+  # Local Storage
+  path_provider: ^2.1.5
+  
+  # Charts & Analytics Dashboard
+  fl_chart: ^0.63.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/
+    - assets/images/
+    - assets/icons/
+    - assets/sounds/
