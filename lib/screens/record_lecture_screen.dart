@@ -282,7 +282,7 @@ class _RecordLectureScreenState extends State<RecordLectureScreen>
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                               color: _textMuted,
-                              fontSize: 12,
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -323,7 +323,7 @@ class _RecordLectureScreenState extends State<RecordLectureScreen>
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: _textMuted,
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -699,7 +699,7 @@ class _RecordLectureScreenState extends State<RecordLectureScreen>
           label,
           style: const TextStyle(
             color: _textMuted,
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: FontWeight.w700,
           ),
         ),

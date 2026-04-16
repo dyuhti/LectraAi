@@ -59,7 +59,7 @@ class PracticeQuizScreen extends StatelessWidget {
                   provider.noteTitle,
                   style: const TextStyle(
                     color: QuizColors.textSecondary,
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -87,7 +87,7 @@ class PracticeQuizScreen extends StatelessWidget {
                   'Question ${provider.currentIndex + 1} of ${provider.questions.length}',
                   style: const TextStyle(
                     color: QuizColors.textSecondary,
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -319,7 +319,7 @@ class _QuizEmptyScaffold extends StatelessWidget {
                 'Generate a quiz to start practicing with LectraAI.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   color: QuizColors.textSecondary,
                   fontWeight: FontWeight.w600,
                 ),

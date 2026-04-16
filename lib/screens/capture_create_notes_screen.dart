@@ -158,7 +158,7 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
               'AI-powered tools for classroom note creation',
               style: TextStyle(
                 color: _subtitle,
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.1,
               ),
@@ -235,7 +235,7 @@ class _FlowHintRow extends StatelessWidget {
         text,
         style: const TextStyle(
           color: color,
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.2,
         ),
@@ -597,7 +597,7 @@ class _HeroCaptureCardState extends State<_HeroCaptureCard>
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   color: Colors.white.withOpacity(0.75),
-                                  fontSize: 11,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                   letterSpacing: 0.1,
                                 ),

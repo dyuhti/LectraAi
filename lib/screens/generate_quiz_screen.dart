@@ -1,8 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/providers/quiz_provider.dart';
 import 'package:smart_lecture_notes/routes/app_routes.dart';
-import 'package:smart_lecture_notes/theme/quiz_theme.dart';
+
+const Color _background = Color(0xFFF7F9FC);
+const Color _navy = Color(0xFF0A2A8A);
+const Color _gradientStart = Color(0xFF1E4ED8);
+const Color _gradientEnd = Color(0xFF3B82F6);
+const Color _white = Colors.white;
+const Color _border = Color(0xFFDCE6FF);
+const Color _textPrimary = Color(0xFF0F172A);
+const Color _textSecondary = Color(0xFF64748B);
+const Color _infoCard = Color(0xFFEEF4FF);
 
 class GenerateQuizScreen extends StatefulWidget {
   const GenerateQuizScreen({Key? key}) : super(key: key);
@@ -12,9 +22,6 @@ class GenerateQuizScreen extends StatefulWidget {
 }
 
 class _GenerateQuizScreenState extends State<GenerateQuizScreen> {
-  static const String _apiKey =
-      String.fromEnvironment('GROQ_API_KEY', defaultValue: '');
-
   final List<_QuizNote> _notes = const [
     _QuizNote(
       title: 'Data Structures - Linked Lists',
@@ -43,245 +50,369 @@ class _GenerateQuizScreenState extends State<GenerateQuizScreen> {
     ),
   ];
 
+  static const List<int> _quickSelectOptions = [5, 10, 15, 20];
+
   int _selectedNoteIndex = 0;
   int _selectedCount = 10;
+  String? _countError;
+  late TextEditingController _questionCountController;
+
+  @override
+  void initState() {
+    super.initState();
+    _questionCountController = TextEditingController(text: '10');
+  }
+
+  @override
+  void dispose() {
+    _questionCountController.dispose();
+    super.dispose();
+  }
+
+  void _handleQuickSelect(int count) {
+    setState(() {
+      _selectedCount = count;
+      _countError = null;
+      _questionCountController.text = count.toString();
+    });
+  }
+
+  void _handleCustomCountChange(String value) {
+    setState(() {
+      if (value.isEmpty) {
+        _countError = null;
+        return;
+      }
+
+      final parsed = int.tryParse(value);
+      if (parsed == null || parsed < 1 || parsed > 25) {
+        _countError = 'Enter a number between 1-25';
+        return;
+      }
+
+      _countError = null;
+      _selectedCount = parsed;
+    });
+  }
+
+  Future<void> _generateQuiz(QuizProvider provider) async {
+    if (_countError != null || _selectedCount < 1 || _selectedCount > 25) {
+      _showSnackBar('Please enter a number between 1-25.');
+      return;
+    }
+
+    final note = _notes[_selectedNoteIndex];
+
+    print('[GenerateQuizScreen] Starting quiz generation...');
+    print('[GenerateQuizScreen] Selected note: ${note.title}');
+    print('[GenerateQuizScreen] Question count: $_selectedCount');
+
+    await provider.generateQuiz(
+      noteTitle: note.title,
+      noteText: note.content,
+      questionCount: _selectedCount,
+    );
+
+    if (!mounted) return;
+
+    if (provider.questions.isEmpty) {
+      final message = provider.errorMessage ?? 'Failed to generate quiz.';
+      print('[GenerateQuizScreen] Generation failed: $message');
+      _showSnackBar(message);
+      return;
+    }
+
+    if (provider.errorMessage != null) {
+      print('[GenerateQuizScreen] Generation completed with warning: ${provider.errorMessage}');
+      _showSnackBar(provider.errorMessage ?? 'Quiz generated (offline mode)');
+    } else {
+      print('[GenerateQuizScreen] Generation completed successfully!');
+    }
+
+    Navigator.of(context).pushNamed(AppRoutes.practiceQuiz);
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: _navy,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<QuizProvider>();
+    final canGenerate = !provider.isLoading && _countError == null;
 
     return Scaffold(
-      backgroundColor: QuizColors.softBackground,
+      backgroundColor: _background,
       appBar: AppBar(
-        backgroundColor: QuizColors.softBackground,
+        backgroundColor: _white,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: QuizColors.navy),
+          icon: const Icon(Icons.arrow_back, color: _navy),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: const Text(
           'Generate AI Quiz',
           style: TextStyle(
-            color: QuizColors.navy,
+            color: _navy,
             fontSize: 18,
             fontWeight: FontWeight.w800,
           ),
         ),
         centerTitle: false,
       ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Select a lecture note to generate a tailored quiz.',
-                  style: TextStyle(
-                    color: QuizColors.textSecondary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                _buildNoteSelector(provider.isLoading),
-                const SizedBox(height: 22),
-                const Text(
-                  'Quiz size',
-                  style: TextStyle(
-                    color: QuizColors.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                _buildCountChips(provider.isLoading),
-                const SizedBox(height: 22),
-                _buildInfoCard(),
-                const SizedBox(height: 28),
-                if (provider.isLoading)
-                  const _ShimmerBlock(height: 56)
-                else
-                  _GradientButton(
-                    label: 'Generate Quiz',
-                    onTap: () => _generateQuiz(provider),
-                  ),
-              ],
-            ),
-          ),
-          if (provider.isLoading) const _LoadingOverlay(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNoteSelector(bool isLoading) {
-    return AbsorbPointer(
-      absorbing: isLoading,
-      child: Column(
-        children: List.generate(_notes.length, (index) {
-          final note = _notes[index];
-          final selected = index == _selectedNoteIndex;
-
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: QuizColors.cardWhite,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: selected
-                    ? QuizColors.selectedOptionBorder
-                    : QuizColors.borderLight,
-                width: selected ? 2 : 1.5,
-              ),
-              boxShadow: selected ? QuizShadows.card : [],
-            ),
-            child: InkWell(
-              onTap: () => setState(() => _selectedNoteIndex = index),
-              borderRadius: BorderRadius.circular(20),
-              child: Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? QuizColors.selectedOptionBg
-                          : QuizColors.infoBg,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.description_outlined,
-                      color: selected
-                          ? QuizColors.selectedOptionBorder
-                          : QuizColors.navy,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          note.title,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: QuizColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          note.subtitle,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: QuizColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (selected)
-                    const Icon(
-                      Icons.check_circle,
-                      color: QuizColors.selectedOptionBorder,
-                    ),
-                ],
-              ),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-
-  Widget _buildCountChips(bool isLoading) {
-    const counts = [5, 10, 15];
-
-    return AbsorbPointer(
-      absorbing: isLoading,
-      child: Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        children: counts.map((count) {
-          final selected = count == _selectedCount;
-          return GestureDetector(
-            onTap: () => setState(() => _selectedCount = count),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: selected
-                    ? QuizColors.successButton
-                    : QuizColors.cardWhite,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: selected
-                      ? QuizColors.successButton
-                      : QuizColors.borderLight,
-                  width: 1.5,
-                ),
-              ),
-              child: Text(
-                '$count questions',
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Select Note',
                 style: TextStyle(
-                  color: selected ? Colors.white : QuizColors.textSecondary,
-                  fontSize: 12,
+                  color: _textPrimary,
+                  fontSize: 14,
                   fontWeight: FontWeight.w700,
                 ),
               ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildInfoCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: QuizColors.infoBg,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: QuizColors.borderLight, width: 1.2),
-      ),
-      child: Row(
-        children: const [
-          Icon(Icons.auto_awesome, color: QuizColors.navy, size: 20),
-          SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'LectraAI generates MCQs with balanced difficulty. Review your notes before starting.',
-              style: TextStyle(
-                fontSize: 12,
-                color: QuizColors.textSecondary,
-                fontWeight: FontWeight.w600,
-                height: 1.4,
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _notes[_selectedNoteIndex].title,
+                icon: const Icon(Icons.keyboard_arrow_down, color: _textSecondary),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: _white,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(
+                      color: _border,
+                      width: 1.5,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(
+                      color: _border,
+                      width: 1.5,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(
+                      color: _gradientStart,
+                      width: 2,
+                    ),
+                  ),
+                ),
+                items: _notes
+                    .map(
+                      (note) => DropdownMenuItem<String>(
+                        value: note.title,
+                        child: Text(
+                          note.title,
+                          style: const TextStyle(
+                            color: _textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: provider.isLoading
+                    ? null
+                    : (value) {
+                        if (value == null) return;
+                        final index = _notes.indexWhere(
+                          (note) => note.title == value,
+                        );
+                        if (index == -1) return;
+                        setState(() => _selectedNoteIndex = index);
+                      },
               ),
-            ),
+              const SizedBox(height: 24),
+              const Text(
+                'Number of Questions',
+                style: TextStyle(
+                  color: _textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: _quickSelectOptions
+                    .map(
+                      (count) => Padding(
+                        padding: EdgeInsets.only(
+                          right: count == _quickSelectOptions.last ? 0 : 10,
+                        ),
+                        child: _QuickSelectChip(
+                          count: count,
+                          selected: _selectedCount == count,
+                          onTap: provider.isLoading
+                              ? null
+                              : () => _handleQuickSelect(count),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Or enter custom number (1-25):',
+                style: TextStyle(
+                  color: _textSecondary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _questionCountController,
+                onChanged: _handleCustomCountChange,
+                keyboardType: TextInputType.number,
+                enabled: !provider.isLoading,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(2),
+                ],
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: _white,
+                  hintText: 'Enter 1-25 questions',
+                  hintStyle: const TextStyle(
+                    color: _textSecondary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  errorText: _countError,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(
+                      color: _border,
+                      width: 1.5,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(
+                      color: _border,
+                      width: 1.5,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(
+                      color: _gradientStart,
+                      width: 2,
+                    ),
+                  ),
+                ),
+                style: const TextStyle(
+                  color: _textPrimary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _infoCard,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: const [
+                    Icon(Icons.auto_awesome, color: _navy, size: 20),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'LectraAI will generate multiple-choice questions based on your selected note.',
+                        style: TextStyle(
+                          color: _textSecondary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              AnimatedOpacity(
+                duration: const Duration(milliseconds: 160),
+                opacity: canGenerate ? 1 : 0.6,
+                child: GestureDetector(
+                  onTap: canGenerate ? () => _generateQuiz(provider) : null,
+                  child: Container(
+                    height: 56,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [_gradientStart, _gradientEnd],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Center(
+                      child: provider.isLoading
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  'LectraAI is generating quiz with Groq...',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            )
+                          : const Text(
+                              'Generate Quiz',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
-  }
-
-  Future<void> _generateQuiz(QuizProvider provider) async {
-    final note = _notes[_selectedNoteIndex];
-
-    await provider.generateQuiz(
-      noteTitle: note.title,
-      noteText: note.content,
-      questionCount: _selectedCount,
-      apiKey: _apiKey,
-    );
-
-    if (!mounted) return;
-    Navigator.of(context).pushNamed(AppRoutes.practiceQuiz);
   }
 }
 
@@ -297,142 +428,61 @@ class _QuizNote {
   });
 }
 
-class _GradientButton extends StatefulWidget {
-  const _GradientButton({
-    required this.label,
+class _QuickSelectChip extends StatefulWidget {
+  const _QuickSelectChip({
+    required this.count,
+    required this.selected,
     required this.onTap,
   });
 
-  final String label;
-  final VoidCallback onTap;
+  final int count;
+  final bool selected;
+  final VoidCallback? onTap;
 
   @override
-  State<_GradientButton> createState() => _GradientButtonState();
+  State<_QuickSelectChip> createState() => _QuickSelectChipState();
 }
 
-class _GradientButtonState extends State<_GradientButton> {
-  bool _hovered = false;
+class _QuickSelectChipState extends State<_QuickSelectChip> {
   bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
-    final scale = _pressed
-        ? 0.98
-        : _hovered
-            ? 1.02
-            : 1.0;
+    final scale = _pressed ? 0.96 : 1.0;
+    final background = widget.selected ? _gradientStart : _white;
+    final textColor = widget.selected ? _white : _textPrimary;
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTapDown: (_) => setState(() => _pressed = true),
-        onTapCancel: () => setState(() => _pressed = false),
-        onTapUp: (_) => setState(() => _pressed = false),
-        onTap: widget.onTap,
-        child: AnimatedScale(
-          scale: scale,
-          duration: const Duration(milliseconds: 140),
-          curve: Curves.easeOut,
-          child: Container(
-            height: 56,
-            decoration: BoxDecoration(
-              gradient: QuizGradients.primary,
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: QuizShadows.card,
-            ),
-            child: Center(
-              child: Text(
-                widget.label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _LoadingOverlay extends StatelessWidget {
-  const _LoadingOverlay();
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: IgnorePointer(
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          color: QuizColors.softBackground.withOpacity(0.6),
-          child: const Center(
-            child: _ShimmerBlock(height: 120),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ShimmerBlock extends StatefulWidget {
-  const _ShimmerBlock({required this.height});
-
-  final double height;
-
-  @override
-  State<_ShimmerBlock> createState() => _ShimmerBlockState();
-}
-
-class _ShimmerBlockState extends State<_ShimmerBlock>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        final t = _controller.value;
-        return Container(
-          height: widget.height,
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: scale,
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOut,
+        child: Container(
+          width: 70,
+          height: 48,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            gradient: LinearGradient(
-              colors: [
-                QuizColors.cardWhite,
-                QuizColors.infoBg,
-                QuizColors.cardWhite,
-              ],
-              stops: [
-                (t - 0.2).clamp(0.0, 1.0),
-                t.clamp(0.0, 1.0),
-                (t + 0.2).clamp(0.0, 1.0),
-              ],
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
+            color: background,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: widget.selected ? background : _border,
+              width: 1.5,
             ),
-            boxShadow: QuizShadows.card,
           ),
-        );
-      },
+          alignment: Alignment.center,
+          child: Text(
+            widget.count.toString(),
+            style: TextStyle(
+              color: textColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

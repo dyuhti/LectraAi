@@ -227,7 +227,7 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
               'PDF, JPG, PNG, DOC up to 50MB',
               style: TextStyle(
                 color: AppColors.textSecondary,
-                fontSize: 12,
+                fontSize: 13,
               ),
             ),
           ],
@@ -345,7 +345,8 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
                   'PDF, JPG, PNG, DOC, DOCX, PPTX',
                   style: TextStyle(
                     color: AppColors.textSecondary,
-                    fontSize: 11,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -394,7 +395,8 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
                   description,
                   style: TextStyle(
                     color: AppColors.textSecondary,
-                    fontSize: 11,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],

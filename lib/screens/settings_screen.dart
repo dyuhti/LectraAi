@@ -96,8 +96,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             const Text(
                               'Receive app updates and reminders',
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 14,
                                 color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ],
@@ -140,8 +141,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             const Text(
                               'Play sound when receiving alerts',
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 14,
                                 color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ],
@@ -195,8 +197,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             const Text(
                               'Easy on the eyes in low light',
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 14,
                                 color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ],
@@ -337,8 +340,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const Text(
                           'AI-powered educational productivity app for efficient lecture note-taking and study management.',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 14,
                             color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w500,
                             height: 1.5,
                           ),
                         ),
@@ -394,9 +398,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Text(
                     subtitle,
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 14,
                       color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w400,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],

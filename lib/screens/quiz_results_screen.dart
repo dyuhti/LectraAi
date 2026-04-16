@@ -119,7 +119,7 @@ class _QuizResultsScreenState extends State<QuizResultsScreen>
                       'Your score',
                       style: TextStyle(
                         color: QuizColors.textSecondary,
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -230,7 +230,7 @@ class _FeedbackChip extends StatelessWidget {
             child: Text(
               message,
               style: const TextStyle(
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: QuizColors.textSecondary,
               ),

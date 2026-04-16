@@ -4,7 +4,14 @@ import 'my_notes_screen.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 
 class AudioTranscriptScreen extends StatefulWidget {
-  const AudioTranscriptScreen({Key? key}) : super(key: key);
+  final String? transcript;
+  final Map<String, dynamic>? summary;
+
+  const AudioTranscriptScreen({
+    this.transcript,
+    this.summary,
+    Key? key,
+  }) : super(key: key);
 
   @override
   State<AudioTranscriptScreen> createState() => _AudioTranscriptScreenState();
@@ -127,9 +134,9 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen>
                     decoration: AppDecorations.card(
                       color: AppColors.primaryLight.withOpacity(0.08),
                     ),
-                    child: const Text(
-                      'This lecture covers linked list data structures, including types, implementation details, and complexity analysis compared to arrays.',
-                      style: TextStyle(
+                    child: Text(
+                      widget.summary?['summary'] ?? 'This lecture covers linked list data structures, including types, implementation details, and complexity analysis compared to arrays.',
+                      style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.primary,
                         height: 1.5,
@@ -139,11 +146,56 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen>
                   ),
                   const SizedBox(height: 28),
 
+                  // Key Points Section (if summary available)
+                  if (widget.summary != null && widget.summary!['keyPoints'] != null)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Key Points',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ...((widget.summary!['keyPoints'] as List).map((point) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                margin: const EdgeInsets.only(top: 6, right: 10),
+                                decoration: const BoxDecoration(
+                                  color: AppColors.primary,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  point.toString(),
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.primary,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )).toList()),
+                        const SizedBox(height: 28),
+                      ],
+                    ),
+
                   // Transcript Section
                   const Text(
                     'TRANSCRIPT',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textSecondary,
                       letterSpacing: 1,
@@ -157,9 +209,9 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Lecture on Data Structures',
-                          style: TextStyle(
+                        Text(
+                          widget.summary?['lectureTitle'] ?? 'Lecture Transcript',
+                          style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: AppColors.primary,
@@ -167,31 +219,7 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen>
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Today we\'re discussing linked lists and their implementation. A linked list is a linear data structure where elements are stored in nodes. Each node contains data and a reference to the next node.',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                            height: 1.6,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        const SizedBox(height: 8),
-                        _buildBulletPoint(
-                          'Single linked list has nodes with one pointer',
-                        ),
-                        const SizedBox(height: 8),
-                        _buildBulletPoint(
-                          'Double linked list has two pointers per node',
-                        ),
-                        const SizedBox(height: 8),
-                        _buildBulletPoint(
-                          'Time complexity for insertion/deletion is O(n)',
-                        ),
-                        const SizedBox(height: 16),
-
-                        Text(
-                          'Compared to arrays, linked lists provide flexibility in size but sacrifice random access. Arrays have O(1) access time while linked lists require O(n) traversal.',
+                          widget.transcript ?? 'Today we\'re discussing linked lists and their implementation. A linked list is a linear data structure where elements are stored in nodes. Each node contains data and a reference to the next node.',
                           style: TextStyle(
                             fontSize: 13,
                             color: AppColors.textSecondary,
@@ -277,35 +305,6 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen>
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildBulletPoint(String text) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(top: 4, right: 8),
-          child: Text(
-            '•',
-            style: TextStyle(
-              color: AppColors.primaryLight,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(
-              fontSize: 13,
-              color: AppColors.textSecondary,
-              height: 1.5,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

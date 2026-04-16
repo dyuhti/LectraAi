@@ -152,7 +152,6 @@ class _OptionStyle {
           pillText: Colors.white,
           shadow: [],
         );
-      case QuizOptionState.neutral:
       default:
         return _OptionStyle(
           background: QuizColors.cardWhite,

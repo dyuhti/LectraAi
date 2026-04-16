@@ -35,7 +35,7 @@ class ReviewAnswersScreen extends StatelessWidget {
         centerTitle: false,
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 90),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
         children: [
           Container(
             padding: const EdgeInsets.all(16),
@@ -52,7 +52,7 @@ class ReviewAnswersScreen extends StatelessWidget {
                   child: Text(
                     'You scored $correct out of $total (${_percentage(correct, total)}%)',
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: QuizColors.textSecondary,
                     ),
@@ -71,21 +71,21 @@ class ReviewAnswersScreen extends StatelessWidget {
           }),
         ],
       ),
-      bottomSheet: SafeArea(
+      bottomNavigationBar: SafeArea(
         child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
           decoration: BoxDecoration(
             color: QuizColors.cardWhite,
             boxShadow: [
               BoxShadow(
-                color: QuizColors.shadowColor.withOpacity(0.9),
-                blurRadius: 14,
-                offset: const Offset(0, -6),
+                color: QuizColors.shadowColor.withOpacity(0.12),
+                blurRadius: 8,
+                offset: const Offset(0, -2),
               ),
             ],
           ),
           child: SizedBox(
-            height: 52,
+            height: 56,
             child: ElevatedButton(
               onPressed: () => Navigator.of(context).maybePop(),
               style: ElevatedButton.styleFrom(
@@ -168,7 +168,7 @@ class _QuestionReviewCard extends StatelessWidget {
                     Text(
                       'Question ${index + 1}',
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: QuizColors.textSecondary,
                       ),

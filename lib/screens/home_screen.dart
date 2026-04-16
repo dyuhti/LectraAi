@@ -98,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         royal: _royal,
                         radius: _radius,
                         onTap: () =>
-                            Navigator.of(context).pushNamed(AppRoutes.captureNotes),
+                            Navigator.of(context).pushNamed(AppRoutes.smartCamera),
                       ),
                     ),
 
@@ -440,7 +440,7 @@ class _HomeHeroCard extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   color: Colors.white.withOpacity(0.78),
-                                  fontSize: 12,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -641,7 +641,7 @@ class _QuickCaptureHorizontalCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: _HomeScreenState._subtle,
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                         height: 1.25,
                       ),
@@ -815,7 +815,7 @@ class _ViewNotesLayeredCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: _HomeScreenState._subtle,
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                         height: 1.25,
                       ),

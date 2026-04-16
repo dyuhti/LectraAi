@@ -375,7 +375,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
                       'Make sure the board is well-lit and text is clearly visible',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 12,
+                        fontSize: 13,
                       ),
                     ),
                   ),

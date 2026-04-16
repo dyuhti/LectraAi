@@ -157,7 +157,8 @@ class _MyNotesScreenState extends State<MyNotesScreen> {
                               : 'Try different search terms',
                           style: TextStyle(
                             color: AppColors.textSecondary,
-                            fontSize: 13,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
@@ -242,7 +243,8 @@ class _MyNotesScreenState extends State<MyNotesScreen> {
                     note.date,
                     style: const TextStyle(
                       color: AppColors.textSecondary,
-                      fontSize: 11,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],

@@ -22,7 +22,6 @@ class QuizProvider extends ChangeNotifier {
   List<QuizQuestion> _questions = [];
   int _currentIndex = 0;
   String _noteTitle = '';
-  String _noteText = '';
   int _quizCount = 10;
 
   bool get isLoading => _isLoading;
@@ -54,47 +53,77 @@ class QuizProvider extends ChangeNotifier {
     required String noteTitle,
     required String noteText,
     required int questionCount,
-    String? apiKey,
   }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     _noteTitle = noteTitle;
-    _noteText = noteText;
     _quizCount = questionCount;
 
     List<QuizQuestion> generated = [];
+    String fallbackReason = '';
+    var shouldStore = false;
 
-    if (apiKey != null && apiKey.trim().isNotEmpty) {
-      try {
-        generated = await _aiService.generateQuiz(
-          apiKey: apiKey,
-          noteText: noteText,
-          questionCount: questionCount,
-          noteTitle: noteTitle,
-        );
-      } catch (error) {
-        _errorMessage = error.toString();
-      }
-    }
+    // ALWAYS try Groq API first
+    try {
+      print('[QuizProvider] Starting quiz generation...');
+      print('[QuizProvider] Calling Groq API...');
 
-    if (generated.isEmpty) {
-      generated = _localGenerator.generate(
+      generated = await _aiService.generateQuiz(
         noteText: noteText,
         questionCount: questionCount,
+        noteTitle: noteTitle,
       );
+
+      print('[QuizProvider] ✓ Groq API successful!');
+      print('[QuizProvider] Generated ${generated.length} questions from Groq API');
+      shouldStore = true;
+    } catch (error) {
+      if (error is GroqApiKeyMissingException) {
+        _errorMessage = error.message;
+        print('[QuizProvider] ✗ ${error.message}');
+      } else {
+        print('[QuizProvider] ✗ Groq API failed: $error');
+        fallbackReason = error.toString();
+
+        // FALLBACK: Only use local generator if Groq fails
+        try {
+          print('[QuizProvider] Activating local fallback generator...');
+          generated = _localGenerator.generate(
+            noteText: noteText,
+            questionCount: questionCount,
+          );
+          print('[QuizProvider] ✓ Local generator created ${generated.length} questions');
+          shouldStore = generated.isNotEmpty;
+          _errorMessage =
+              'Using offline mode (Groq API unavailable). Reason: $fallbackReason';
+        } catch (fallbackError) {
+          print('[QuizProvider] ✗ Local generator also failed: $fallbackError');
+          _errorMessage = 'Failed to generate quiz. Error: $fallbackError';
+        }
+      }
+    } finally {
+      if (shouldStore && generated.isNotEmpty) {
+        print('[QuizProvider] Storing ${generated.length} questions in repository...');
+        _questions = generated;
+        _currentIndex = 0;
+        _repository.setQuestions(_questions);
+        _repository.setNoteTitle(noteTitle);
+        _repository.setQuizCount(questionCount);
+        print('[QuizProvider] ✓ Quiz generation complete. Ready for practice.');
+      } else {
+        if (generated.isEmpty && _errorMessage == null) {
+          _errorMessage = 'Failed to generate any questions.';
+        }
+        _questions = [];
+        _currentIndex = 0;
+      }
+
+      _isLoading = false;
+      print('[QuizProvider] Loading stopped');
+      notifyListeners();
     }
-
-    _questions = generated;
-    _currentIndex = 0;
-    _isLoading = false;
-
-    _repository.setQuestions(_questions);
-    _repository.setNoteTitle(noteTitle);
-    _repository.setQuizCount(questionCount);
-
-    notifyListeners();
   }
 
   void selectAnswer(int questionIndex, int answerIndex) {
@@ -143,7 +172,6 @@ class QuizProvider extends ChangeNotifier {
     _questions = [];
     _currentIndex = 0;
     _noteTitle = '';
-    _noteText = '';
     _quizCount = 10;
     _repository.clear();
     notifyListeners();

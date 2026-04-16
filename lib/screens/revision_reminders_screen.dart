@@ -72,9 +72,9 @@ class _RevisionRemindersScreenState extends State<RevisionRemindersScreen> {
                         Text(
                           'Get notified to review your notes',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 13,
                             color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w400,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
@@ -253,10 +253,10 @@ class _RevisionRemindersScreenState extends State<RevisionRemindersScreen> {
                           Text(
                             'Research shows that reviewing material at increasing intervals improves long-term retention. Our AI will remind you to review notes at optimal times for maximum learning efficiency.',
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               color: AppColors.textSecondary,
                               height: 1.5,
-                              fontWeight: FontWeight.w400,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ],
@@ -373,7 +373,7 @@ class _RevisionRemindersScreenState extends State<RevisionRemindersScreen> {
                                       const Text(
                                         'Edit',
                                         style: TextStyle(
-                                          fontSize: 12,
+                                          fontSize: 13,
                                           fontWeight: FontWeight.w600,
                                           color: AppColors.primary,
                                         ),
@@ -382,7 +382,7 @@ class _RevisionRemindersScreenState extends State<RevisionRemindersScreen> {
                                       Text(
                                         'Delete',
                                         style: TextStyle(
-                                          fontSize: 12,
+                                          fontSize: 13,
                                           fontWeight: FontWeight.w600,
                                           color: AppColors.primaryDark,
                                         ),

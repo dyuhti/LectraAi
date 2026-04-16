@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/routes/app_routes.dart';
@@ -8,7 +9,38 @@ import 'package:smart_lecture_notes/widgets/custom_app_bar.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 
 void main() {
+  const groqApiKey = String.fromEnvironment('GROQ_API_KEY');
+  if (kDebugMode && groqApiKey.isEmpty) {
+    runApp(const _MissingGroqKeyApp());
+    return;
+  }
+
   runApp(const SmartLectureNotesApp());
+}
+
+class _MissingGroqKeyApp extends StatelessWidget {
+  const _MissingGroqKeyApp();
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: Colors.red,
+        body: Center(
+          child: Text(
+            'Groq key missing in launch.json',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class SmartLectureNotesApp extends StatelessWidget {
