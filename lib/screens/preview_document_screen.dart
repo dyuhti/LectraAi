@@ -3,7 +3,8 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/models/note.dart';
 import 'package:smart_lecture_notes/providers/document_provider.dart';
-import 'package:smart_lecture_notes/providers/notes_provider.dart';
+import 'package:smart_lecture_notes/screens/my_notes_screen.dart';
+import 'package:smart_lecture_notes/services/notes_firestore_service.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 
 class PreviewDocumentScreen extends StatefulWidget {
@@ -14,204 +15,90 @@ class PreviewDocumentScreen extends StatefulWidget {
 }
 
 class _PreviewDocumentScreenState extends State<PreviewDocumentScreen> {
-  /// Convert raw OCR text into structured, readable notes.
-  static String structureText(String text) {
-    final cleaned = text
-        .replaceAll(RegExp(r'\n(?=[a-z])'), ' ')
-        .replaceAll(RegExp(r'\s{2,}'), ' ')
-        .trim();
-
-    if (cleaned.isEmpty) {
-      return '';
-    }
-
-    final words = cleaned.split(' ');
-    final buffer = StringBuffer();
-    buffer.writeln('Document Summary');
-    buffer.writeln('');
-
-    String? currentSection;
-    final bulletWords = <String>[];
-
-    void flushBullet() {
-      if (bulletWords.isEmpty) {
-        return;
-      }
-      buffer.writeln('- ${bulletWords.join(' ')}');
-      bulletWords.clear();
-    }
-
-    void startSection(String title) {
-      if (currentSection == title) {
-        return;
-      }
-      flushBullet();
-      buffer.writeln('');
-      buffer.writeln(title);
-      currentSection = title;
-    }
-
-    for (var i = 0; i < words.length; i++) {
-      final word = words[i];
-      final lower = word.toLowerCase();
-
-      if (lower.contains('name')) {
-        startSection('Patient Details');
-      } else if (lower.contains('date')) {
-        startSection('Date Information');
-      } else if (lower.contains('type')) {
-        startSection('Surgery Details');
-      } else if (lower.contains('flow')) {
-        startSection('Parameters');
-      }
-
-      if (word.endsWith(':') && i + 1 < words.length) {
-        flushBullet();
-        final key = word.substring(0, word.length - 1);
-        final value = words[i + 1];
-        buffer.writeln('- $key: $value');
-        i += 1;
-        continue;
-      }
-
-      bulletWords.add(word);
-
-      if (bulletWords.length >= 10 || word.endsWith('.') || word.endsWith(';')) {
-        flushBullet();
-      }
-    }
-
-    flushBullet();
-    return buffer.toString().trim();
-  }
-
   static String formatSummary(String text) {
-    return text.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
+    final cleaned = text.replaceAll(RegExp(r'[ \t]{2,}'), ' ').trim();
+    final lines = cleaned
+        .split(RegExp(r'\n+'))
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+    return lines.join('\n');
   }
 
-  List<Widget> _buildStructuredWidgets(String structuredText) {
-    final lines = structuredText.split('\n');
-    final widgets = <Widget>[];
-    var hasContent = false;
-
-    for (var i = 0; i < lines.length; i++) {
-      if (i == 0) {
-        // Title is rendered separately.
-        continue;
-      }
-
-      final line = lines[i].trim();
-      if (line.isEmpty) {
-        if (hasContent) {
-          widgets.add(const SizedBox(height: 10));
-        }
-        continue;
-      }
-
-      hasContent = true;
-
-      if (_isSectionHeader(line)) {
-        widgets.add(
-          Padding(
-            padding: const EdgeInsets.only(top: 12, bottom: 6),
-            child: Row(
-              children: [
-                Icon(
-                  _iconForSection(line),
-                  color: AppColors.primary,
-                  size: 18,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  line,
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-        continue;
-      }
-
-      if (line.startsWith('- ')) {
-        final bulletText = line.substring(2).trim();
-        widgets.add(
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  margin: const EdgeInsets.only(top: 7),
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryLight,
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    bulletText,
-                    style: const TextStyle(
-                      color: Color(0xFF1E293B),
-                      fontSize: 15,
-                      height: 1.6,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-        continue;
-      }
-
-      widgets.add(
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Text(
-            line,
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$label: ',
             style: const TextStyle(
-              color: Color(0xFF1E293B),
-              fontSize: 15,
-              height: 1.6,
+              color: AppColors.primary,
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
             ),
           ),
-        ),
-      );
-    }
-
-    return widgets;
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: Color(0xFF1E293B),
+                fontSize: 14,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  static bool _isSectionHeader(String line) {
-    return line == 'Patient Details' ||
-        line == 'Date Information' ||
-        line == 'Surgery Details' ||
-        line == 'Parameters' ||
-        line == 'Document Summary';
-  }
+  String _buildNoteContent({
+    required String title,
+    required String summary,
+    required bool isResearchPaper,
+    required String authors,
+    required String journalInfo,
+    required String doi,
+    required String abstractText,
+    required List<String> detailLines,
+  }) {
+    final buffer = StringBuffer();
+    buffer.writeln(title);
+    buffer.writeln('');
+    buffer.writeln('Summary');
+    buffer.writeln(summary);
 
-  static IconData _iconForSection(String line) {
-    switch (line) {
-      case 'Patient Details':
-        return Icons.person_outline;
-      case 'Date Information':
-        return Icons.calendar_today_outlined;
-      case 'Surgery Details':
-        return Icons.local_hospital_outlined;
-      case 'Parameters':
-        return Icons.tune_outlined;
-      case 'Document Summary':
-      default:
-        return Icons.description_outlined;
+    if (isResearchPaper &&
+        (authors.isNotEmpty || journalInfo.isNotEmpty || doi.isNotEmpty || abstractText.isNotEmpty)) {
+      buffer.writeln('');
+      buffer.writeln('Research Details');
+      if (authors.isNotEmpty) {
+        buffer.writeln('- Authors: $authors');
+      }
+      if (journalInfo.isNotEmpty) {
+        buffer.writeln('- Source: $journalInfo');
+      }
+      if (doi.isNotEmpty) {
+        buffer.writeln('- DOI: $doi');
+      }
+      if (abstractText.isNotEmpty) {
+        buffer.writeln('');
+        buffer.writeln('Abstract');
+        buffer.writeln(abstractText);
+      }
     }
+
+    if (detailLines.isNotEmpty) {
+      buffer.writeln('');
+      buffer.writeln('Document Details');
+      for (final line in detailLines) {
+        buffer.writeln('- $line');
+      }
+    }
+
+    return buffer.toString().trim();
   }
 
   @override
@@ -219,12 +106,28 @@ class _PreviewDocumentScreenState extends State<PreviewDocumentScreen> {
     final documentProvider = context.watch<DocumentProvider>();
     final summary = documentProvider.summary.trim();
     final extractedText = documentProvider.extractedText.trim();
-    final structuredText = structureText(extractedText);
-    final formattedSummary =
-        summary.isEmpty ? '' : formatSummary(summary);
-    final noteTitle = structuredText.isEmpty
-        ? 'Document Summary'
-        : structuredText.split('\n').first.trim();
+    final title = documentProvider.title.trim();
+    final authors = documentProvider.authors.trim();
+    final doi = documentProvider.doi.trim();
+    final abstractText = documentProvider.abstractText.trim();
+    final journalInfo = documentProvider.journalInfo.trim();
+    final isResearchPaper = documentProvider.isResearchPaper;
+    final formattedSummary = summary.isEmpty ? '' : formatSummary(summary);
+    final noteTitle = title.isEmpty ? 'Document Summary' : title;
+    final hasResearchFields =
+      authors.isNotEmpty || journalInfo.isNotEmpty || doi.isNotEmpty || abstractText.isNotEmpty;
+    final canSave =
+        formattedSummary.isNotEmpty || extractedText.isNotEmpty;
+    final noteContent = _buildNoteContent(
+      title: noteTitle,
+      summary: formattedSummary.isEmpty ? 'Summary unavailable.' : formattedSummary,
+      isResearchPaper: isResearchPaper,
+      authors: authors,
+      journalInfo: journalInfo,
+      doi: doi,
+      abstractText: abstractText,
+      detailLines: documentProvider.detailLines,
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -284,29 +187,57 @@ class _PreviewDocumentScreenState extends State<PreviewDocumentScreen> {
                       ),
                     ),
             ),
-            const SizedBox(height: 20),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFFDCE6FF)),
-              ),
-              child: structuredText.isEmpty
-                  ? const Text(
-                      'No extracted text available.',
+            if (hasResearchFields) ...[
+              const SizedBox(height: 20),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFFDCE6FF)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Research Details',
                       style: TextStyle(
-                        fontSize: 15,
-                        height: 1.6,
-                        color: Color(0xFF1E293B),
+                        color: AppColors.primary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
                       ),
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: _buildStructuredWidgets(structuredText),
                     ),
-            ),
+                    const SizedBox(height: 12),
+                    if (journalInfo.isNotEmpty)
+                      _buildInfoRow('Source', journalInfo),
+                    if (authors.isNotEmpty)
+                      _buildInfoRow('Authors', authors),
+                    if (doi.isNotEmpty) _buildInfoRow('DOI', doi),
+                    if (abstractText.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Abstract',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        abstractText,
+                        style: const TextStyle(
+                          color: Color(0xFF1E293B),
+                          fontSize: 14,
+                          height: 1.6,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -319,8 +250,8 @@ class _PreviewDocumentScreenState extends State<PreviewDocumentScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ElevatedButton(
-                onPressed: () {
-                  if (structuredText.isEmpty) {
+                onPressed: () async {
+                  if (!canSave) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('No extracted text to save.'),
@@ -330,20 +261,41 @@ class _PreviewDocumentScreenState extends State<PreviewDocumentScreen> {
                     return;
                   }
 
-                  final title = structuredText.split('\n').first.trim();
                   final note = Note(
-                    title: title.isEmpty ? 'Document Summary' : title,
+                    title: noteTitle,
                     subject: 'Document',
-                    content: structuredText,
+                    content: noteContent,
                     summary: formattedSummary.isEmpty
                         ? 'Summary unavailable.'
                         : formattedSummary,
+                    cleanedText: extractedText,
                     createdAt: DateTime.now(),
                   );
 
-                  Provider.of<NotesProvider>(context, listen: false).addNote(note);
-
-                  Navigator.pushReplacementNamed(context, '/notes');
+                  try {
+                    await NotesFirestoreService().saveNote(note);
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Note saved to Firestore.'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const MyNotesScreen(),
+                      ),
+                    );
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to save note: $e'),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,

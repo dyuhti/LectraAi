@@ -74,6 +74,56 @@ $transcript
     }
   }
 
+  /// Generate a concise document summary (3-5 lines).
+  Future<String> generateDocumentSummary(String text) async {
+    if (_apiKey.isEmpty) {
+      throw Exception(_missingKeyMessage);
+    }
+
+    if (text.trim().isEmpty) {
+      return 'No content available.';
+    }
+
+    final prompt = '''
+Summarize the following document in 3 to 5 lines.
+Each line should be one concise sentence.
+Do not use bullets or numbering.
+Avoid assumptions and focus only on the provided text.
+
+Document:
+$text
+''';
+
+    try {
+      final response = await http.post(
+        Uri.parse(_endpoint),
+        headers: {
+          'Authorization': 'Bearer $_apiKey',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'model': _model,
+          'messages': [
+            {'role': 'user', 'content': prompt},
+          ],
+          'temperature': 0.3,
+          'max_tokens': 600,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['choices'][0]['message']['content'];
+      } else if (response.statusCode == 401) {
+        throw Exception('Invalid Groq API key. Please check your credentials.');
+      } else {
+        throw Exception('Groq API error: ${response.statusCode}');
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   /// Generate quiz questions from lecture
   Future<List<Map<String, dynamic>>> generateQuizFromLecture(
     String transcript,

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:smart_lecture_notes/firebase_options.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/routes/app_routes.dart';
@@ -10,7 +12,10 @@ import 'package:smart_lecture_notes/providers/document_provider.dart';
 import 'package:smart_lecture_notes/widgets/custom_app_bar.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await _initializeFirebase();
+
   const groqApiKey = String.fromEnvironment('GROQ_API_KEY');
   const isFlutterTest = bool.fromEnvironment('FLUTTER_TEST');
   if (kDebugMode && groqApiKey.isEmpty && !isFlutterTest) {
@@ -19,6 +24,21 @@ void main() {
   }
 
   runApp(const SmartLectureNotesApp());
+}
+
+Future<void> _initializeFirebase() async {
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } on FirebaseException catch (e) {
+    // Firebase auto-initializes on Android, ignore duplicate-app errors
+    if (e.code != 'duplicate-app') {
+      debugPrint('Firebase initialization failed: $e');
+    }
+  } catch (e) {
+    debugPrint('Firebase initialization failed: $e');
+  }
 }
 
 class _MissingGroqKeyApp extends StatelessWidget {

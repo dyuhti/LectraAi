@@ -9,7 +9,7 @@ class AuthService {
   final http.Client _client;
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
-  static const String _baseUrl = 'http://10.0.2.2:5000/api/auth';
+  static const String _baseUrl = 'http://192.168.0.191:5000/api/auth';
 
   String? lastError;
 
@@ -31,6 +31,7 @@ class AuthService {
         if (token is String && token.isNotEmpty) {
           await _storage.write(key: 'auth_token', value: token);
         }
+        await _storeUserId(data);
         return true;
       }
 
@@ -61,6 +62,7 @@ class AuthService {
         if (token is String && token.isNotEmpty) {
           await _storage.write(key: 'auth_token', value: token);
         }
+        await _storeUserId(data);
         return true;
       }
 
@@ -91,5 +93,48 @@ class AuthService {
       return message;
     }
     return fallback;
+  }
+
+  Future<void> _storeUserId(Map<String, dynamic>? data) async {
+    final user = data?['user'];
+    final userId = user is Map ? user['id'] : null;
+    if (userId is String && userId.trim().isNotEmpty) {
+      await _storage.write(key: 'user_id', value: userId.trim());
+    }
+  }
+
+  Future<String?> getUserId() async {
+    final cached = await _storage.read(key: 'user_id');
+    if (cached != null && cached.trim().isNotEmpty) {
+      return cached;
+    }
+
+    final token = await _storage.read(key: 'auth_token');
+    if (token == null || token.trim().isEmpty) {
+      return null;
+    }
+
+    final userId = _decodeUserIdFromToken(token);
+    if (userId != null && userId.trim().isNotEmpty) {
+      await _storage.write(key: 'user_id', value: userId.trim());
+      return userId.trim();
+    }
+    return null;
+  }
+
+  String? _decodeUserIdFromToken(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length < 2) {
+        return null;
+      }
+      final payload = base64Url.normalize(parts[1]);
+      final decoded = utf8.decode(base64Url.decode(payload));
+      final data = jsonDecode(decoded);
+      final id = data is Map<String, dynamic> ? data['id'] : null;
+      return id is String ? id : null;
+    } catch (_) {
+      return null;
+    }
   }
 }

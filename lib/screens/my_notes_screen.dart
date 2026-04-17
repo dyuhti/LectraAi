@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/models/note.dart';
-import 'package:smart_lecture_notes/providers/notes_provider.dart';
 import 'package:smart_lecture_notes/screens/note_detail_screen.dart';
+import 'package:smart_lecture_notes/services/notes_firestore_service.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 
 class MyNotesScreen extends StatefulWidget {
@@ -37,15 +36,6 @@ class _MyNotesScreenState extends State<MyNotesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final notes = context.watch<NotesProvider>().notes;
-    final filteredNotes = _query.isEmpty
-      ? notes
-      : notes
-        .where((note) =>
-          note.title.toLowerCase().contains(_query) ||
-          note.subject.toLowerCase().contains(_query))
-        .toList();
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -67,7 +57,6 @@ class _MyNotesScreenState extends State<MyNotesScreen> {
       ),
       body: Column(
         children: [
-          // Search Bar
           Padding(
             padding: const EdgeInsets.all(16),
             child: TextField(
@@ -104,51 +93,83 @@ class _MyNotesScreenState extends State<MyNotesScreen> {
               style: const TextStyle(color: AppColors.primary),
             ),
           ),
-          // Notes List
           Expanded(
-            child: filteredNotes.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.note_outlined,
-                          size: 64,
-                          color: AppColors.primaryLight.withOpacity(0.3),
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'No notes found',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _searchController.text.isEmpty
-                              ? 'Create your first note'
-                              : 'Try different search terms',
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+            child: StreamBuilder<List<Note>>(
+              stream: NotesFirestoreService().streamNotes(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      snapshot.error.toString(),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    itemCount: filteredNotes.length,
-                    itemBuilder: (context, index) {
-                      return _buildNoteCard(filteredNotes[index]);
-                    },
-                  ),
+                  );
+                }
+
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  );
+                }
+
+                final notes = snapshot.data ?? [];
+                final filteredNotes = _query.isEmpty
+                    ? notes
+                    : notes
+                        .where((note) =>
+                            note.title.toLowerCase().contains(_query) ||
+                            note.summary.toLowerCase().contains(_query))
+                        .toList();
+
+                return filteredNotes.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.note_outlined,
+                              size: 64,
+                              color: AppColors.primaryLight.withOpacity(0.3),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'No notes found',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _searchController.text.isEmpty
+                                  ? 'Create your first note'
+                                  : 'Try different search terms',
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        itemCount: filteredNotes.length,
+                        itemBuilder: (context, index) {
+                          return _buildNoteCard(filteredNotes[index]);
+                        },
+                      );
+              },
+            ),
           ),
         ],
       ),
@@ -156,6 +177,12 @@ class _MyNotesScreenState extends State<MyNotesScreen> {
   }
 
   Widget _buildNoteCard(Note note) {
+    final summaryText = note.summary.trim().isEmpty
+        ? 'Summary unavailable.'
+        : note.summary.trim().replaceAll('\n', ' ');
+    final createdDate = MaterialLocalizations.of(context)
+        .formatMediumDate(note.createdAt);
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -169,70 +196,46 @@ class _MyNotesScreenState extends State<MyNotesScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: AppDecorations.card(),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Color indicator
-            Container(
-              width: 4,
-              height: 70,
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Content
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryLight.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      note.subject,
-                      style: const TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
                     note.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: AppColors.primary,
-                      fontSize: 14,
+                      fontSize: 15,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    MaterialLocalizations.of(context)
-                        .formatMediumDate(note.createdAt),
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  createdDate,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            // Arrow
-            const Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: AppColors.textSecondary,
+            const SizedBox(height: 8),
+            Text(
+              summaryText,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+                height: 1.4,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),
