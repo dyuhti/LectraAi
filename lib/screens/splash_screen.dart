@@ -71,14 +71,14 @@ class _SplashScreenState extends State<SplashScreen>
         children: [
           // Premium background with gradients
           Container(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  const Color(0xFF0A2A8A),
-                  const Color(0xFF0F3BA5),
-                  const Color(0xFF0A2A8A),
+                  Color(0xFF0A2A8A),
+                  Color(0xFF0F3BA5),
+                  Color(0xFF0A2A8A),
                 ],
               ),
             ),
@@ -263,10 +263,10 @@ class _SplashScreenState extends State<SplashScreen>
                             alignment: Alignment.center,
                             children: [
                               // Title text
-                              Text(
+                              const Text(
                                 'LectraAI',
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 48,
                                   fontWeight: FontWeight.w900,

@@ -117,7 +117,7 @@ class _OptionStyle {
   factory _OptionStyle.fromState(QuizOptionState state) {
     switch (state) {
       case QuizOptionState.selected:
-        return _OptionStyle(
+        return const _OptionStyle(
           background: QuizColors.selectedOptionBg,
           border: QuizColors.selectedOptionBorder,
           borderWidth: 2,
@@ -125,7 +125,7 @@ class _OptionStyle {
           pillBackground: QuizColors.selectedOptionBorder,
           pillText: Colors.white,
           shadow: [
-            const BoxShadow(
+            BoxShadow(
               color: QuizColors.shadowColor,
               blurRadius: 12,
               offset: Offset(0, 6),
@@ -133,7 +133,7 @@ class _OptionStyle {
           ],
         );
       case QuizOptionState.correct:
-        return _OptionStyle(
+        return const _OptionStyle(
           background: QuizColors.correctBg,
           border: QuizColors.correctBorder,
           borderWidth: 2,
@@ -143,7 +143,7 @@ class _OptionStyle {
           shadow: [],
         );
       case QuizOptionState.wrongSelected:
-        return _OptionStyle(
+        return const _OptionStyle(
           background: QuizColors.wrongBg,
           border: QuizColors.wrongBorder,
           borderWidth: 2,
@@ -153,7 +153,7 @@ class _OptionStyle {
           shadow: [],
         );
       default:
-        return _OptionStyle(
+        return const _OptionStyle(
           background: QuizColors.cardWhite,
           border: QuizColors.borderLight,
           borderWidth: 1.5,

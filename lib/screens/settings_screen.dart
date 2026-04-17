@@ -81,10 +81,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
+                        const Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Push Notifications',
                               style: TextStyle(
                                 fontSize: 14,
@@ -92,8 +92,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 color: AppColors.primary,
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            const Text(
+                            SizedBox(height: 4),
+                            Text(
                               'Receive app updates and reminders',
                               style: TextStyle(
                                 fontSize: 14,
@@ -126,10 +126,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
+                        const Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Sound Notifications',
                               style: TextStyle(
                                 fontSize: 14,
@@ -137,8 +137,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 color: AppColors.primary,
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            const Text(
+                            SizedBox(height: 4),
+                            Text(
                               'Play sound when receiving alerts',
                               style: TextStyle(
                                 fontSize: 14,
@@ -182,10 +182,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
+                        const Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Dark Mode',
                               style: TextStyle(
                                 fontSize: 14,
@@ -193,8 +193,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 color: AppColors.primary,
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            const Text(
+                            SizedBox(height: 4),
+                            Text(
                               'Easy on the eyes in low light',
                               style: TextStyle(
                                 fontSize: 14,
@@ -406,7 +406,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             ),
-            Icon(
+            const Icon(
               Icons.arrow_forward_ios,
               color: AppColors.textSecondary,
               size: 16,

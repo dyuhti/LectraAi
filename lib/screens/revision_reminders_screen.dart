@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:smart_lecture_notes/services/revision_reminder_service.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 
 class RevisionRemindersScreen extends StatefulWidget {
@@ -15,6 +16,8 @@ class _RevisionRemindersScreenState extends State<RevisionRemindersScreen> {
   String _reminderInterval = 'Every 7 days';
   TimeOfDay _notificationTime = const TimeOfDay(hour: 9, minute: 0);
   bool _showAlarms = false;
+  bool _isLoading = true;
+  bool _isSaving = false;
 
   final List<String> _intervalOptions = [
     'Every 1 day',
@@ -24,8 +27,91 @@ class _RevisionRemindersScreenState extends State<RevisionRemindersScreen> {
     'Every 30 days',
   ];
 
+  final Map<String, int> _intervalDaysMap = const {
+    'Every 1 day': 1,
+    'Every 3 days': 3,
+    'Every 7 days': 7,
+    'Every 14 days': 14,
+    'Every 30 days': 30,
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final settings = await RevisionReminderService.loadSettings();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _remindersEnabled = settings.enabled;
+      _notificationTime = settings.timeOfDay;
+      _reminderInterval = _intervalDaysMap.entries
+          .firstWhere(
+            (entry) => entry.value == settings.intervalDays,
+            orElse: () => const MapEntry('Every 7 days', 7),
+          )
+          .key;
+      _isLoading = false;
+    });
+  }
+
+  RevisionReminderSettings _buildSettings() {
+    final intervalDays = _intervalDaysMap[_reminderInterval] ?? 7;
+    return RevisionReminderSettings(
+      enabled: _remindersEnabled,
+      intervalDays: intervalDays,
+      hour: _notificationTime.hour,
+      minute: _notificationTime.minute,
+    );
+  }
+
+  Future<void> _persistAndSchedule({String? successMessage}) async {
+    setState(() => _isSaving = true);
+    final settings = _buildSettings();
+
+    try {
+      await RevisionReminderService.saveSettings(settings);
+      await RevisionReminderService.scheduleReminders(settings);
+      if (!mounted) return;
+      if (successMessage != null && successMessage.isNotEmpty) {
+        Get.snackbar(
+          'Settings Saved',
+          successMessage,
+          backgroundColor: AppColors.primary.withOpacity(0.9),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 2),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Get.snackbar(
+        'Reminder Error',
+        'Failed to update reminders: $e',
+        backgroundColor: AppColors.primary.withOpacity(0.9),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -57,10 +143,10 @@ class _RevisionRemindersScreenState extends State<RevisionRemindersScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
+                    const Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Enable Reminders',
                           style: TextStyle(
                             fontSize: 14,
@@ -68,7 +154,7 @@ class _RevisionRemindersScreenState extends State<RevisionRemindersScreen> {
                             color: AppColors.primary,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: 4),
                         Text(
                           'Get notified to review your notes',
                           style: TextStyle(
@@ -85,16 +171,11 @@ class _RevisionRemindersScreenState extends State<RevisionRemindersScreen> {
                         value: _remindersEnabled,
                         onChanged: (value) {
                           setState(() => _remindersEnabled = value);
-                          if (value) {
-                            Get.snackbar(
-                              'Reminders Enabled',
-                              'You will receive revision notifications',
-                              backgroundColor:
-                                  AppColors.primary.withOpacity(0.9),
-                              colorText: Colors.white,
-                              duration: const Duration(seconds: 2),
-                            );
-                          }
+                          _persistAndSchedule(
+                            successMessage: value
+                                ? 'Reminders enabled and scheduled.'
+                                : 'Reminders disabled.',
+                          );
                         },
                         activeThumbColor: AppColors.primary,
                         activeTrackColor:
@@ -145,13 +226,8 @@ class _RevisionRemindersScreenState extends State<RevisionRemindersScreen> {
                       onChanged: (newValue) {
                         if (newValue != null) {
                           setState(() => _reminderInterval = newValue);
-                          Get.snackbar(
-                            'Interval Updated',
-                            'Reminders will come $newValue',
-                            backgroundColor:
-                                AppColors.primary.withOpacity(0.9),
-                            colorText: Colors.white,
-                            duration: const Duration(seconds: 2),
+                          _persistAndSchedule(
+                            successMessage: 'Reminders will come $newValue.',
                           );
                         }
                       },
@@ -182,13 +258,9 @@ class _RevisionRemindersScreenState extends State<RevisionRemindersScreen> {
                       );
                       if (pickedTime != null) {
                         setState(() => _notificationTime = pickedTime);
-                        Get.snackbar(
-                          'Time Updated',
-                          'Notifications will arrive at ${pickedTime.format(context)}',
-                            backgroundColor:
-                                AppColors.primary.withOpacity(0.9),
-                          colorText: Colors.white,
-                          duration: const Duration(seconds: 2),
+                        _persistAndSchedule(
+                          successMessage:
+                              'Notifications will arrive at ${pickedTime.format(context)}.',
                         );
                       }
                     },
@@ -228,20 +300,20 @@ class _RevisionRemindersScreenState extends State<RevisionRemindersScreen> {
                 decoration: AppDecorations.card(
                   color: AppColors.primaryLight.withOpacity(0.08),
                 ),
-                child: Row(
+                child: const Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.info_outline,
                       color: AppColors.primaryLight,
                       size: 20,
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Spaced Repetition Learning',
                             style: TextStyle(
                               fontSize: 13,
@@ -249,7 +321,7 @@ class _RevisionRemindersScreenState extends State<RevisionRemindersScreen> {
                               color: AppColors.primary,
                             ),
                           ),
-                          const SizedBox(height: 6),
+                          SizedBox(height: 6),
                           Text(
                             'Research shows that reviewing material at increasing intervals improves long-term retention. Our AI will remind you to review notes at optimal times for maximum learning efficiency.',
                             style: TextStyle(
@@ -324,7 +396,7 @@ class _RevisionRemindersScreenState extends State<RevisionRemindersScreen> {
                                     const SizedBox(height: 4),
                                     Text(
                                       _reminderInterval,
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         fontSize: 12,
                                         color: AppColors.textSecondary,
                                         fontWeight: FontWeight.w400,
@@ -368,9 +440,9 @@ class _RevisionRemindersScreenState extends State<RevisionRemindersScreen> {
                                       },
                                     ),
                                   ],
-                                  child: Row(
+                                  child: const Row(
                                     children: [
-                                      const Text(
+                                      Text(
                                         'Edit',
                                         style: TextStyle(
                                           fontSize: 13,
@@ -378,7 +450,7 @@ class _RevisionRemindersScreenState extends State<RevisionRemindersScreen> {
                                           color: AppColors.primary,
                                         ),
                                       ),
-                                      const SizedBox(width: 12),
+                                      SizedBox(width: 12),
                                       Text(
                                         'Delete',
                                         style: TextStyle(
@@ -416,28 +488,84 @@ class _RevisionRemindersScreenState extends State<RevisionRemindersScreen> {
             ),
           ],
         ),
-        child: SizedBox(
-          height: 52,
-          child: ElevatedButton(
-            onPressed: () {
-              Get.snackbar(
-                'Settings Saved',
-                'Revision reminder settings updated',
-                backgroundColor: AppColors.primary.withOpacity(0.9),
-                colorText: Colors.white,
-                duration: const Duration(seconds: 2),
-              );
-            },
-            style: AppButtonStyles.primary(radius: 14),
-            child: const Text(
-              'Save Settings',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+        child: Row(
+          children: [
+            // Test Notification Button
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () async {
+                  try {
+                    await RevisionReminderService.scheduleTestNotification();
+                    // Debug: Check if OS registered the notification
+                    await Future.delayed(const Duration(milliseconds: 500));
+                    await RevisionReminderService.debugPendingNotifications();
+                    Get.snackbar(
+                      'Test Scheduled',
+                      'Notification will appear in 1 minute (check logs)',
+                      backgroundColor: AppColors.primary.withOpacity(0.9),
+                      colorText: Colors.white,
+                      duration: const Duration(seconds: 2),
+                    );
+                  } catch (e) {
+                    Get.snackbar(
+                      'Test Failed',
+                      'Error: $e',
+                      backgroundColor: Colors.red,
+                      colorText: Colors.white,
+                      duration: const Duration(seconds: 3),
+                    );
+                  }
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary, width: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: const Text(
+                  'Test',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
-          ),
+            const SizedBox(width: 12),
+            // Save Settings Button
+            Expanded(
+              child: ElevatedButton(
+                onPressed: _isSaving
+                    ? null
+                    : () => _persistAndSchedule(
+                          successMessage: 'Revision reminder settings updated.',
+                        ),
+                style: AppButtonStyles.primary(radius: 14),
+                child: _isSaving
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        'Save Settings',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+              ),
+            ),
+          ],
         ),
       ),
     );

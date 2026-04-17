@@ -51,9 +51,9 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
       const SizedBox(height: 12),
 
       // Mini Progress Chips
-      _FadeInOnBuild(
-        delay: const Duration(milliseconds: 0),
-        child: const _ProgressChipsRow(),
+      const _FadeInOnBuild(
+        delay: Duration(milliseconds: 0),
+        child: _ProgressChipsRow(),
       ),
 
       const SizedBox(height: 24),
@@ -112,8 +112,8 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
       ),
 
       const SizedBox(height: 16),
-      _FadeInOnBuild(
-        delay: const Duration(milliseconds: 240),
+      const _FadeInOnBuild(
+        delay: Duration(milliseconds: 240),
         child: _ProgressDashboardCard(
           radius: _radius,
           navy: _navy,
@@ -134,13 +134,13 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
           icon: const Icon(Icons.arrow_back, color: _navy),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Column(
+        title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
             Hero(
               tag: _homeHeroTag,
-              child: const Material(
+              child: Material(
                 color: Colors.transparent,
                 child: Text(
                   'Capture & Create Notes',
@@ -153,8 +153,8 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
                 ),
               ),
             ),
-            const SizedBox(height: 4),
-            const Text(
+            SizedBox(height: 4),
+            Text(
               'AI-powered tools for classroom note creation',
               style: TextStyle(
                 color: _subtitle,
@@ -750,11 +750,7 @@ class _MosaicFeatureGrid extends StatelessWidget {
     required this.royal,
     required this.subtitleColor,
     required this.ambient,
-    this.staggerBaseMs = 0,
-    required this.onUpload,
-    required this.onRecord,
-    required this.onQuiz,
-    required this.onAnalytics,
+    required this.onUpload, required this.onRecord, required this.onQuiz, required this.onAnalytics, this.staggerBaseMs = 0,
   });
 
   final double radius;
@@ -1407,10 +1403,10 @@ class _ProgressDashboardCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              Wrap(
+              const Wrap(
                 spacing: 10,
                 runSpacing: 10,
-                children: const [
+                children: [
                   _StatChip(
                     icon: Icons.note_alt_outlined,
                     text: '3 notes created',
@@ -1482,7 +1478,7 @@ class _ProgressChipsRow extends StatelessWidget {
     const royal = _CaptureCreateNotesScreenState._royal;
     const subtitle = _CaptureCreateNotesScreenState._subtitle;
 
-    return SingleChildScrollView(
+    return const SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
@@ -1494,7 +1490,7 @@ class _ProgressChipsRow extends StatelessWidget {
             royal: royal,
             subtitle: subtitle,
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           _MinProgressChip(
             icon: Icons.mic_none,
             value: '4',
@@ -1503,7 +1499,7 @@ class _ProgressChipsRow extends StatelessWidget {
             royal: royal,
             subtitle: subtitle,
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           _MinProgressChip(
             icon: Icons.quiz_outlined,
             value: '8',

@@ -51,7 +51,7 @@ class _AudioProcessingScreenState extends State<AudioProcessingScreen>
       await Future.delayed(const Duration(seconds: 2));
       
       // Simulated transcript from audio
-      final sampleTranscript = '''
+      const sampleTranscript = '''
 Today we discussed the fundamentals of photosynthesis. 
 Photosynthesis is the process by which plants convert light energy into chemical energy.
 It occurs in two main stages: the light-dependent reactions and the light-independent reactions.

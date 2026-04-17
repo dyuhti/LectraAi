@@ -24,6 +24,9 @@ dependencies:
   
   # Local Storage
   path_provider: ^2.1.5
+  shared_preferences: ^2.2.3
+  flutter_local_notifications: ^21.0.0
+  timezone: ^0.11.0
 
   # File selection
   file_picker: ^8.0.0

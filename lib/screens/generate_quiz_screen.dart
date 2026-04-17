@@ -182,7 +182,7 @@ class _GenerateQuizScreenState extends State<GenerateQuizScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _notes[_selectedNoteIndex].title,
+                initialValue: _notes[_selectedNoteIndex].title,
                 icon: const Icon(Icons.keyboard_arrow_down, color: _textSecondary),
                 decoration: InputDecoration(
                   filled: true,
@@ -335,8 +335,8 @@ class _GenerateQuizScreenState extends State<GenerateQuizScreen> {
                   color: _infoCard,
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Row(
-                  children: const [
+                child: const Row(
+                  children: [
                     Icon(Icons.auto_awesome, color: _navy, size: 20),
                     SizedBox(width: 12),
                     Expanded(
@@ -372,9 +372,9 @@ class _GenerateQuizScreenState extends State<GenerateQuizScreen> {
                     ),
                     child: Center(
                       child: provider.isLoading
-                          ? Row(
+                          ? const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
+                              children: [
                                 SizedBox(
                                   width: 20,
                                   height: 20,

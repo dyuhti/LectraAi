@@ -115,8 +115,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
 
                     const SizedBox(height: 22),
-                    _FadeInOnBuild(
-                      delay: const Duration(milliseconds: 260),
+                    const _FadeInOnBuild(
+                      delay: Duration(milliseconds: 260),
                       child: _TodayProgressCard(
                         navy: _navy,
                         royal: _royal,
@@ -635,7 +635,7 @@ class _QuickCaptureHorizontalCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(
+                    const Text(
                       'Snap the board. We convert it to clean notes.',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -809,7 +809,7 @@ class _ViewNotesLayeredCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(
+                    const Text(
                       'Browse, search, and refine your lecture notes.',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -1037,10 +1037,10 @@ class _TodayProgressCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Wrap(
+          const Wrap(
             spacing: 10,
             runSpacing: 10,
-            children: const [
+            children: [
               _StatChip(icon: Icons.note_alt_outlined, text: '3 notes created'),
               _StatChip(icon: Icons.camera_alt_outlined, text: '2 images captured'),
               _StatChip(icon: Icons.quiz_outlined, text: '1 quiz generated'),

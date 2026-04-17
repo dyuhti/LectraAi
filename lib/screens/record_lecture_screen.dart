@@ -367,7 +367,7 @@ class _RecordLectureScreenState extends State<RecordLectureScreen>
           const SizedBox(width: 8),
           Text(
             label,
-            style: TextStyle(
+            style: const TextStyle(
               color: _navy,
               fontSize: 11,
               fontWeight: FontWeight.w800,
@@ -407,7 +407,7 @@ class _RecordLectureScreenState extends State<RecordLectureScreen>
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(32),
-                gradient: LinearGradient(
+                gradient: const LinearGradient(
                   colors: [
                     Colors.white,
                     _chipBlueBg,
@@ -715,16 +715,16 @@ class _RecordLectureScreenState extends State<RecordLectureScreen>
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: _glowBlue.withOpacity(0.55), width: 1),
       ),
-      child: Row(
+      child: const Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
+          Icon(
             Icons.auto_awesome_rounded,
             color: _navy,
             size: 14,
           ),
-          const SizedBox(width: 6),
-          const Text(
+          SizedBox(width: 6),
+          Text(
             'Powered by LectraAI speech intelligence',
             style: TextStyle(
               color: _navy,

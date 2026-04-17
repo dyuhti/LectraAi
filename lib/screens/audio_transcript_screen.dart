@@ -220,7 +220,7 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen>
                         const SizedBox(height: 16),
                         Text(
                           widget.transcript ?? 'Today we\'re discussing linked lists and their implementation. A linked list is a linear data structure where elements are stored in nodes. Each node contains data and a reference to the next node.',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 13,
                             color: AppColors.textSecondary,
                             height: 1.6,

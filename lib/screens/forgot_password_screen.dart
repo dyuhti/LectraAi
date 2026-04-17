@@ -85,7 +85,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   SizedBox(height: isSmallScreen ? 32 : 48),
 
                   // Header with icon
-                  AuthScreenHeader(
+                  const AuthScreenHeader(
                     icon: Icons.lock_reset_outlined,
                     title: 'Reset Password',
                     subtitle: 'Enter your email to receive a password reset link',

@@ -9,11 +9,14 @@ import 'package:smart_lecture_notes/routes/route_generator.dart';
 import 'package:smart_lecture_notes/providers/quiz_provider.dart';
 import 'package:smart_lecture_notes/providers/notes_provider.dart';
 import 'package:smart_lecture_notes/providers/document_provider.dart';
+import 'package:smart_lecture_notes/services/revision_reminder_service.dart';
 import 'package:smart_lecture_notes/widgets/custom_app_bar.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await RevisionReminderService.initialize();
+  await RevisionReminderService.requestPermissions();
   await _initializeFirebase();
 
   const groqApiKey = String.fromEnvironment('GROQ_API_KEY');

@@ -27,9 +27,7 @@ class Note {
 
   factory Note.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
-    final createdAt = data['createdAt'] is Timestamp
-        ? (data['createdAt'] as Timestamp).toDate()
-        : DateTime.now();
+    final createdAt = _parseCreatedAt(data['createdAt']);
 
     final cleanedText = (data['cleanedText'] ?? '').toString();
     final summary = (data['summary'] ?? '').toString();
@@ -190,5 +188,15 @@ class Note {
       }
     }
     return unique;
+  }
+
+  static DateTime _parseCreatedAt(dynamic value) {
+    if (value is Timestamp) {
+      return value.toDate();
+    }
+    if (value is String) {
+      return DateTime.tryParse(value) ?? DateTime.fromMillisecondsSinceEpoch(0);
+    }
+    return DateTime.fromMillisecondsSinceEpoch(0);
   }
 }

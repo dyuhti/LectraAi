@@ -4,10 +4,7 @@ import 'package:smart_lecture_notes/theme/app_theme.dart';
 /// Premium modern text input field for authentication
 class ModernAuthField extends StatefulWidget {
   const ModernAuthField({
-    Key? key,
-    required this.controller,
-    required this.hintText,
-    required this.validator,
+    required this.controller, required this.hintText, required this.validator, Key? key,
     this.icon,
     this.isPassword = false,
     this.keyboardType = TextInputType.text,
@@ -140,9 +137,7 @@ class _ModernAuthFieldState extends State<ModernAuthField> {
 /// Premium modern button for authentication
 class ModernAuthButton extends StatefulWidget {
   const ModernAuthButton({
-    Key? key,
-    required this.label,
-    required this.onPressed,
+    required this.label, required this.onPressed, Key? key,
     this.isLoading = false,
   }) : super(key: key);
 
@@ -254,9 +249,7 @@ class _ModernAuthButtonState extends State<ModernAuthButton>
 /// Premium header for auth screens with icon and title
 class AuthScreenHeader extends StatelessWidget {
   const AuthScreenHeader({
-    Key? key,
-    required this.icon,
-    required this.title,
+    required this.icon, required this.title, Key? key,
     this.subtitle,
   }) : super(key: key);
 
@@ -366,10 +359,7 @@ class AuthScreenHeader extends StatelessWidget {
 /// Premium helper link for auth screens
 class AuthHelperLink extends StatefulWidget {
   const AuthHelperLink({
-    Key? key,
-    required this.text,
-    required this.linkText,
-    required this.onTap,
+    required this.text, required this.linkText, required this.onTap, Key? key,
   }) : super(key: key);
 
   final String text;
@@ -424,8 +414,7 @@ class _AuthHelperLinkState extends State<AuthHelperLink> {
 /// Premium gradient background for auth screens
 class AuthGradientBackground extends StatelessWidget {
   const AuthGradientBackground({
-    Key? key,
-    required this.child,
+    required this.child, Key? key,
   }) : super(key: key);
 
   final Widget child;

@@ -72,8 +72,8 @@ class _QuizResultsScreenState extends State<QuizResultsScreen>
                 decoration: BoxDecoration(
                   color: QuizColors.cardWhite,
                   borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    const BoxShadow(
+                  boxShadow: const [
+                    BoxShadow(
                       color: QuizColors.shadowColor,
                       blurRadius: 22,
                       offset: Offset(0, 12),

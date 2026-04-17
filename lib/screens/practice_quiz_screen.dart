@@ -190,7 +190,7 @@ class _QuizBottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = isLast ? 'Submit Quiz' : 'Next Question';
-    final enabled = isLast ? isComplete : true;
+    final enabled = !isLast || isComplete;
 
     return SafeArea(
       child: Container(

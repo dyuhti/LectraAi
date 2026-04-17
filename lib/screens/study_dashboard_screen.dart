@@ -472,7 +472,7 @@ class _StudyDashboardScreenState extends State<StudyDashboardScreen>
                           ),
                           lineTouchData: LineTouchData(
                             enabled: true,
-                            touchCallback: (FlTouchEvent event, LineTouchResponse? response) {
+                            touchCallback: (event, response) {
                               if (event is FlTapUpEvent) {
                                 setState(() {
                                   lineChartTouchedIndex =

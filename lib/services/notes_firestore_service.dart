@@ -54,12 +54,15 @@ class NotesFirestoreService {
         .collection('users')
         .doc(userId)
         .collection('notes')
-        .orderBy('createdAt', descending: true)
         .snapshots()
         .map(
-          (snapshot) => snapshot.docs
-              .map((doc) => Note.fromFirestore(doc))
-              .toList(),
+          (snapshot) {
+            final notes = snapshot.docs
+                .map((doc) => Note.fromFirestore(doc))
+                .toList();
+            notes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+            return notes;
+          },
         );
   }
 }
