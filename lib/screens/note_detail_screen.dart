@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:smart_lecture_notes/models/note.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 
 class NoteDetailScreen extends StatefulWidget {
+  final Note? note;
   final String? noteTitle;
   final String? categoryName;
 
   const NoteDetailScreen({
     Key? key,
+    this.note,
     this.noteTitle = 'Lecture on Data Structures',
     this.categoryName = 'Data Structures',
   }) : super(key: key);
@@ -51,14 +54,19 @@ class _NoteDetailScreenState extends State<NoteDetailScreen>
       vsync: this,
     );
 
-    // Initialize controllers with sample data
-    _titleController =
-        TextEditingController(text: widget.noteTitle ?? 'Lecture on Data Structures');
+    final note = widget.note;
+
+    // Initialize controllers (prefer passed-in Note data)
+    _titleController = TextEditingController(
+      text: note?.title ?? widget.noteTitle ?? 'Lecture on Data Structures',
+    );
     _overviewController = TextEditingController(
-      text: 'Today we\'re discussing linked lists and their implementation. A linked list is a linear data structure where elements are stored in nodes. Each node contains data and a reference to the next node.',
+      text: note?.content ??
+          'Today we\'re discussing linked lists and their implementation. A linked list is a linear data structure where elements are stored in nodes. Each node contains data and a reference to the next node.',
     );
     _formulasController = TextEditingController(
-      text: 'Loss Function: L = 1/n Σ(y_pred - y_actual)²\nSigmoid Activation: σ(x) = 1 / (1 + e^(-x))\nGradient Descent: θ = θ - αν(θ)',
+      text: note?.summary ??
+          'Loss Function: L = 1/n Σ(y_pred - y_actual)²\nSigmoid Activation: σ(x) = 1 / (1 + e^(-x))\nGradient Descent: θ = θ - αν(θ)',
     );
     _keyPointsController = TextEditingController(
       text: 'Neural networks consist of input, hidden and output layers\nActivation functions introduce non-linearity\nTraining requires labeled data and optimization\nOverfitting can be prevented with regularization',
@@ -190,7 +198,9 @@ class _NoteDetailScreenState extends State<NoteDetailScreen>
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          widget.categoryName ?? 'Data Structures',
+                            widget.note?.subject ??
+                                widget.categoryName ??
+                                'Data Structures',
                           style: const TextStyle(
                             color: AppColors.primary,
                             fontSize: 11,
@@ -198,14 +208,17 @@ class _NoteDetailScreenState extends State<NoteDetailScreen>
                           ),
                         ),
                       ),
-                      Text(
-                        'April 14, 2026',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
+                        Text(
+                          widget.note != null
+                              ? MaterialLocalizations.of(context)
+                                  .formatFullDate(widget.note!.createdAt)
+                              : 'April 14, 2026',
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -491,7 +504,7 @@ class _NoteDetailScreenState extends State<NoteDetailScreen>
                   ),
                   RotationTransition(
                     turns: Tween(begin: 0.0, end: 0.5).animate(animationController),
-                    child: Icon(
+                    child: const Icon(
                       Icons.keyboard_arrow_down,
                       color: AppColors.textSecondary,
                       size: 24,
@@ -513,9 +526,9 @@ class _NoteDetailScreenState extends State<NoteDetailScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   decoration: BoxDecoration(
                     color: AppColors.primaryLight.withOpacity(0.02),
-                    border: Border(
+                    border: const Border(
                       top: BorderSide(
-                        color: const Color(0xFFDCE6FF),
+                        color: Color(0xFFDCE6FF),
                         width: 1.5,
                       ),
                     ),

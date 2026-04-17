@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:smart_lecture_notes/routes/app_routes.dart';
+import 'package:smart_lecture_notes/services/auth_service.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 import 'package:smart_lecture_notes/widgets/auth_widgets.dart';
 
@@ -14,6 +15,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  final AuthService _authService = AuthService();
 
   bool _rememberMe = false;
   bool _isLoading = false;
@@ -52,14 +54,30 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-      
-      await Future.delayed(const Duration(seconds: 2));
+
+      final success = await _authService.login(
+        _emailController.text,
+        _passwordController.text,
+      );
 
       if (!mounted) return;
       setState(() => _isLoading = false);
 
-      Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+      if (success) {
+        Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+      } else {
+        _showError(_authService.lastError ?? 'Login failed');
+      }
     }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red.shade600,
+      ),
+    );
   }
 
   @override
@@ -89,7 +107,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                   SizedBox(height: isSmallScreen ? 20 : 32),
                   
                   // Header with icon
-                  AuthScreenHeader(
+                  const AuthScreenHeader(
                     icon: Icons.mail_outline_rounded,
                     title: 'Welcome Back',
                     subtitle: 'Sign in to your account to continue',
@@ -165,57 +183,62 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             );
                           },
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              GestureDetector(
-                                onTap: () {
-                                  setState(() => _rememberMe = !_rememberMe);
-                                },
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 20,
-                                      height: 20,
-                                      decoration: BoxDecoration(
-                                        border: Border.all(
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setState(() => _rememberMe = !_rememberMe);
+                                  },
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 20,
+                                        height: 20,
+                                        decoration: BoxDecoration(
+                                          border: Border.all(
+                                            color: _rememberMe
+                                                ? AppColors.primary
+                                                : AppColors.primary.withOpacity(0.3),
+                                            width: 2,
+                                          ),
+                                          borderRadius: BorderRadius.circular(6),
                                           color: _rememberMe
                                               ? AppColors.primary
-                                              : AppColors.primary.withOpacity(0.3),
-                                          width: 2,
+                                              : Colors.transparent,
                                         ),
-                                        borderRadius: BorderRadius.circular(6),
-                                        color: _rememberMe
-                                            ? AppColors.primary
-                                            : Colors.transparent,
+                                        child: _rememberMe
+                                            ? const Icon(
+                                                Icons.check,
+                                                size: 14,
+                                                color: Colors.white,
+                                              )
+                                            : null,
                                       ),
-                                      child: _rememberMe
-                                          ? const Icon(
-                                              Icons.check,
-                                              size: 14,
-                                              color: Colors.white,
-                                            )
-                                          : null,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Remember me',
-                                      style: TextStyle(
-                                        color: AppColors.textSecondary
-                                            .withOpacity(0.7),
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
+                                      const SizedBox(width: 8),
+                                      Flexible(
+                                        child: Text(
+                                          'Remember me',
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: AppColors.textSecondary
+                                                .withOpacity(0.7),
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
+                              const SizedBox(width: 12),
                               GestureDetector(
                                 onTap: () {
                                   Navigator.of(context).pushNamed(
                                     AppRoutes.forgotPassword,
                                   );
                                 },
-                                child: Text(
+                                child: const Text(
                                   'Forgot Password?',
                                   style: TextStyle(
                                     color: AppColors.primary,

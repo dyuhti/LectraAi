@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:provider/provider.dart';
+import 'package:smart_lecture_notes/providers/document_provider.dart';
 import 'package:smart_lecture_notes/screens/preview_document_screen.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 
 class DocumentProcessingScreen extends StatefulWidget {
-  const DocumentProcessingScreen({Key? key}) : super(key: key);
+  final String fileName;
+  final String? filePath;
+
+  const DocumentProcessingScreen({
+    required this.fileName, Key? key,
+    this.filePath,
+  }) : super(key: key);
 
   @override
   State<DocumentProcessingScreen> createState() =>
@@ -23,12 +31,23 @@ class _DocumentProcessingScreenState extends State<DocumentProcessingScreen>
       vsync: this,
     )..repeat();
 
-    // Simulate processing and navigate to preview after 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        Get.off(() => const PreviewDocumentScreen());
-      }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startProcessing();
     });
+  }
+
+  Future<void> _startProcessing() async {
+    final provider = context.read<DocumentProvider>();
+    final filePath = widget.filePath;
+
+    if (filePath == null || filePath.isEmpty) {
+      provider.setError('Missing file path.');
+    } else {
+      await provider.processFile(filePath);
+    }
+
+    if (!mounted) return;
+    Get.off(() => const PreviewDocumentScreen());
   }
 
   @override
@@ -95,8 +114,11 @@ class _DocumentProcessingScreenState extends State<DocumentProcessingScreen>
             ),
             const SizedBox(height: 12),
             Text(
-              'Using AI to extract and analyze content',
-              style: TextStyle(
+              widget.fileName,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 14,
               ),
@@ -105,7 +127,7 @@ class _DocumentProcessingScreenState extends State<DocumentProcessingScreen>
             // Processing steps
             Column(
               children: [
-                _buildProcessingStep('Uploading file', 1),
+                _buildProcessingStep('Uploading ${widget.fileName}', 1),
                 _buildProcessingStep('Analyzing content', 2),
                 _buildProcessingStep('Generating summary', 3),
               ],
@@ -133,7 +155,7 @@ class _DocumentProcessingScreenState extends State<DocumentProcessingScreen>
                   ? const Icon(Icons.check, color: Colors.white, size: 16)
                   : Text(
                       '$step',
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.bold,
                       ),

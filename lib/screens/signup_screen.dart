@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:smart_lecture_notes/routes/app_routes.dart';
+import 'package:smart_lecture_notes/services/auth_service.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 import 'package:smart_lecture_notes/widgets/auth_widgets.dart';
 
@@ -16,6 +17,7 @@ class _SignupScreenState extends State<SignupScreen> with SingleTickerProviderSt
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  final AuthService _authService = AuthService();
 
   bool _isLoading = false;
   String _selectedRole = 'Student';
@@ -75,14 +77,31 @@ class _SignupScreenState extends State<SignupScreen> with SingleTickerProviderSt
   Future<void> _handleSignup() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-      
-      await Future.delayed(const Duration(seconds: 2));
+
+      final success = await _authService.signup(
+        _fullNameController.text,
+        _emailController.text,
+        _passwordController.text,
+      );
 
       if (!mounted) return;
       setState(() => _isLoading = false);
 
-      Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+      if (success) {
+        Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+      } else {
+        _showError(_authService.lastError ?? 'Signup failed');
+      }
     }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red.shade600,
+      ),
+    );
   }
 
   @override
@@ -114,7 +133,7 @@ class _SignupScreenState extends State<SignupScreen> with SingleTickerProviderSt
                   SizedBox(height: isSmallScreen ? 20 : 32),
                   
                   // Header with icon
-                  AuthScreenHeader(
+                  const AuthScreenHeader(
                     icon: Icons.person_add_outlined,
                     title: 'Create Account',
                     subtitle: 'Sign up to get started today',
@@ -258,12 +277,12 @@ class _SignupScreenState extends State<SignupScreen> with SingleTickerProviderSt
                               underline: const SizedBox(),
                               style: const TextStyle(color: AppColors.primary),
                               dropdownColor: Colors.white,
-                              onChanged: (String? newValue) {
+                              onChanged: (newValue) {
                                 if (newValue != null) {
                                   setState(() => _selectedRole = newValue);
                                 }
                               },
-                              items: _roles.map<DropdownMenuItem<String>>((String role) {
+                              items: _roles.map<DropdownMenuItem<String>>((role) {
                                 return DropdownMenuItem<String>(
                                   value: role,
                                   child: Text(role),

@@ -19,6 +19,7 @@ class AppRoutes {
   static const String previewDocument = '/preview-document';
 
   // Note Management
+  static const String notes = '/notes';
   static const String viewNotes = '/view-notes';
   static const String noteDetail = '/note-detail';
 
@@ -48,6 +49,7 @@ class AppRoutes {
       fileUpload: 'File Upload',
       recordAudio: 'Record Audio',
       previewDocument: 'Preview Document',
+      notes: 'Notes',
       viewNotes: 'View Notes',
       noteDetail: 'Note Detail',
       generateQuiz: 'Generate Quiz',

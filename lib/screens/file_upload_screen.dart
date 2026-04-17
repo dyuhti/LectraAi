@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as p;
 import 'package:smart_lecture_notes/screens/document_processing_screen.dart';
 import 'package:smart_lecture_notes/routes/page_transitions.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
@@ -15,6 +18,7 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
   List<UploadedFile> uploadedFiles = [];
   bool _isUploading = false;
   double _uploadProgress = 0;
+  final ImagePicker _imagePicker = ImagePicker();
 
   @override
   Widget build(BuildContext context) {
@@ -47,13 +51,13 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
             const SizedBox(height: 24),
 
             // OR Divider
-            Row(
+            const Row(
               children: [
                 Expanded(
                   child: Divider(color: AppColors.border),
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: EdgeInsets.symmetric(horizontal: 12),
                   child: Text(
                     'OR',
                     style: TextStyle(
@@ -87,12 +91,7 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
                     label: 'From Files',
                     color: AppColors.primaryLight,
                     onPressed: () {
-                      Get.snackbar(
-                        'File Manager',
-                        'Opening file manager...',
-                        backgroundColor: AppColors.primary,
-                        colorText: Colors.white,
-                      );
+                      _pickFromFiles();
                     },
                   ),
                 ),
@@ -103,12 +102,7 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
                     label: 'From Gallery',
                     color: AppColors.primaryLight,
                     onPressed: () {
-                      Get.snackbar(
-                        'Gallery',
-                        'Opening gallery...',
-                        backgroundColor: AppColors.primary,
-                        colorText: Colors.white,
-                      );
+                      _pickFromGallery();
                     },
                   ),
                 ),
@@ -181,13 +175,7 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
   Widget _buildDragDropZone() {
     return GestureDetector(
       onTap: () {
-        Get.snackbar(
-          'Upload',
-          'File picker opened...',
-          backgroundColor: AppColors.primary,
-          colorText: Colors.white,
-        );
-        _simulateFileUpload();
+        _pickFromFiles();
       },
       child: Container(
         width: double.infinity,
@@ -215,7 +203,7 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            Text(
+            const Text(
               'or click to browse from your device',
               style: TextStyle(
                 color: AppColors.textSecondary,
@@ -223,7 +211,7 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            Text(
+            const Text(
               'PDF, JPG, PNG, DOC up to 50MB',
               style: TextStyle(
                 color: AppColors.textSecondary,
@@ -328,11 +316,11 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          Expanded(
+          const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Supported Formats',
                   style: TextStyle(
                     color: AppColors.primary,
@@ -340,7 +328,7 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   'PDF, JPG, PNG, DOC, DOCX, PPTX',
                   style: TextStyle(
@@ -393,7 +381,7 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
                 const SizedBox(height: 2),
                 Text(
                   description,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
@@ -449,7 +437,7 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
                   children: [
                     Text(
                       file.size,
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 11,
                       ),
@@ -466,7 +454,7 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
                       ),
                       child: Text(
                         file.status,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: AppColors.primary,
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
@@ -494,57 +482,174 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
     );
   }
 
-  void _simulateFileUpload() {
+  Future<void> _pickFromFiles() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: true,
+        type: FileType.custom,
+        allowedExtensions: const [
+          'pdf',
+          'jpg',
+          'jpeg',
+          'png',
+          'doc',
+          'docx',
+          'pptx',
+        ],
+      );
+      if (result == null || result.files.isEmpty) return;
+
+      final picked = result.files
+          .map(
+            (f) => _PickedUpload(
+              name: f.name,
+              path: f.path,
+              sizeBytes: f.size,
+            ),
+          )
+          .toList();
+
+      await _simulateFileUpload(selectedFiles: picked);
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Could not open file picker',
+        backgroundColor: AppColors.primary,
+        colorText: Colors.white,
+      );
+    }
+  }
+
+  Future<void> _pickFromGallery() async {
+    try {
+      final images = await _imagePicker.pickMultiImage();
+      if (images.isEmpty) return;
+
+      final picked = <_PickedUpload>[];
+      for (final image in images) {
+        final bytes = await image.length();
+        picked.add(
+          _PickedUpload(
+            name: p.basename(image.path),
+            path: image.path,
+            sizeBytes: bytes,
+          ),
+        );
+      }
+
+      await _simulateFileUpload(selectedFiles: picked);
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Could not open gallery',
+        backgroundColor: AppColors.primary,
+        colorText: Colors.white,
+      );
+    }
+  }
+
+  IconData _iconForFilename(String name) {
+    final ext = p.extension(name).toLowerCase();
+    switch (ext) {
+      case '.pdf':
+        return Icons.picture_as_pdf;
+      case '.jpg':
+      case '.jpeg':
+      case '.png':
+        return Icons.image;
+      case '.ppt':
+      case '.pptx':
+        return Icons.slideshow;
+      case '.doc':
+      case '.docx':
+        return Icons.description;
+      default:
+        return Icons.insert_drive_file;
+    }
+  }
+
+  String _formatBytes(int bytes) {
+    const kb = 1024;
+    const mb = 1024 * 1024;
+    if (bytes >= mb) {
+      return '${(bytes / mb).toStringAsFixed(1)} MB';
+    }
+    if (bytes >= kb) {
+      return '${(bytes / kb).toStringAsFixed(0)} KB';
+    }
+    return '$bytes B';
+  }
+
+  Future<void> _simulateFileUpload({required List<_PickedUpload> selectedFiles}) async {
+    if (selectedFiles.isEmpty) return;
+    if (!mounted) return;
+
     setState(() {
       _isUploading = true;
       _uploadProgress = 0;
     });
 
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        setState(() => _uploadProgress = 0.3);
-      }
-    });
+    await Future.delayed(const Duration(milliseconds: 350));
+    if (!mounted) return;
+    setState(() => _uploadProgress = 0.35);
 
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) {
-        setState(() => _uploadProgress = 0.7);
-      }
-    });
+    await Future.delayed(const Duration(milliseconds: 650));
+    if (!mounted) return;
+    setState(() => _uploadProgress = 0.75);
 
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() {
-          _uploadProgress = 1.0;
-          _isUploading = false;
-        });
+    await Future.delayed(const Duration(milliseconds: 650));
+    if (!mounted) return;
+    setState(() {
+      _uploadProgress = 1.0;
+      _isUploading = false;
 
-        uploadedFiles.add(
+      for (final file in selectedFiles) {
+        uploadedFiles.insert(
+          0,
           UploadedFile(
-            name: 'Lecture_Physics_Ch5.pdf',
-            size: '2.4 MB',
+            name: file.name,
+            size: _formatBytes(file.sizeBytes),
             status: 'Processing',
-            color: const Color(0xFF5B7FFF),
-            icon: Icons.picture_as_pdf,
+            color: AppColors.primaryLight,
+            icon: _iconForFilename(file.name),
           ),
         );
-
-        Get.snackbar(
-          'Success',
-          'File uploaded successfully! Processing...',
-          backgroundColor: AppColors.primary,
-          colorText: Colors.white,
-        );
-
-        Future.delayed(const Duration(seconds: 1), () {
-          if (!mounted) return;
-          Navigator.of(context).push(
-            AppPageTransitions.fadeSlide(const DocumentProcessingScreen()),
-          );
-        });
       }
     });
+
+    Get.snackbar(
+      'Success',
+      selectedFiles.length == 1
+          ? 'File selected successfully! Processing...'
+          : '${selectedFiles.length} files selected successfully! Processing...',
+      backgroundColor: AppColors.primary,
+      colorText: Colors.white,
+    );
+
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
+    final primary = selectedFiles.first;
+    Navigator.of(context).push(
+      AppPageTransitions.fadeSlide(
+        DocumentProcessingScreen(
+          fileName: primary.name,
+          filePath: primary.path,
+        ),
+      ),
+    );
   }
+}
+
+class _PickedUpload {
+  final String name;
+  final String? path;
+  final int sizeBytes;
+
+  const _PickedUpload({
+    required this.name,
+    required this.path,
+    required this.sizeBytes,
+  });
 }
 
 class UploadedFile {

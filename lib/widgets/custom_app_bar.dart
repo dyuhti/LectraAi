@@ -134,7 +134,7 @@ Future<dynamic> navigateAndClearStack(
 
 /// Navigation state helper
 class NavigationService {
-  static final GlobalKey<NavigatorState> navigatorKey = Get.key;
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   /// Pop current route
   static void pop({dynamic result}) {

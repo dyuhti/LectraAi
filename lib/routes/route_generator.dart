@@ -10,7 +10,7 @@ import 'package:smart_lecture_notes/screens/camera_capture_screen.dart';
 import 'package:smart_lecture_notes/screens/file_upload_screen.dart';
 import 'package:smart_lecture_notes/screens/record_lecture_screen.dart';
 import 'package:smart_lecture_notes/screens/preview_document_screen.dart';
-import 'package:smart_lecture_notes/screens/my_notes_screen.dart';
+import 'package:smart_lecture_notes/screens/notes_screen.dart';
 import 'package:smart_lecture_notes/screens/note_detail_screen.dart';
 import 'package:smart_lecture_notes/screens/generate_quiz_screen.dart';
 import 'package:smart_lecture_notes/screens/practice_quiz_screen.dart';
@@ -64,8 +64,9 @@ class RouteGenerator {
         return _buildRoute(const PreviewDocumentScreen());
 
       // Note Management
+      case AppRoutes.notes:
       case AppRoutes.viewNotes:
-        return _buildRoute(const MyNotesScreen());
+        return _buildRoute(const NotesScreen());
 
       case AppRoutes.noteDetail:
         final noteTitle = (args is Map) ? args['noteTitle'] as String? : null;

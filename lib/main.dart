@@ -5,12 +5,15 @@ import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/routes/app_routes.dart';
 import 'package:smart_lecture_notes/routes/route_generator.dart';
 import 'package:smart_lecture_notes/providers/quiz_provider.dart';
+import 'package:smart_lecture_notes/providers/notes_provider.dart';
+import 'package:smart_lecture_notes/providers/document_provider.dart';
 import 'package:smart_lecture_notes/widgets/custom_app_bar.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 
 void main() {
   const groqApiKey = String.fromEnvironment('GROQ_API_KEY');
-  if (kDebugMode && groqApiKey.isEmpty) {
+  const isFlutterTest = bool.fromEnvironment('FLUTTER_TEST');
+  if (kDebugMode && groqApiKey.isEmpty && !isFlutterTest) {
     runApp(const _MissingGroqKeyApp());
     return;
   }
@@ -51,6 +54,8 @@ class SmartLectureNotesApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => QuizProvider()),
+        ChangeNotifierProvider(create: (_) => NotesProvider()),
+        ChangeNotifierProvider(create: (_) => DocumentProvider()),
       ],
       child: GetMaterialApp(
         title: 'Smart Lecture Notes',

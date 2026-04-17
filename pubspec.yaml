@@ -24,6 +24,10 @@ dependencies:
   
   # Local Storage
   path_provider: ^2.1.5
+
+  # File selection
+  file_picker: ^8.0.0
+  image_picker: ^1.1.2
   
   # Charts & Analytics Dashboard
   fl_chart: ^0.63.0
@@ -31,10 +35,17 @@ dependencies:
   # Networking & State Management
   http: ^1.2.2
   provider: ^6.1.2
+  flutter_secure_storage: ^9.2.2
+
+  # Document Processing
+  google_mlkit_text_recognition: ^0.13.0
+  syncfusion_flutter_pdf: ^27.1.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  http: ^1.6.0 
+  flutter_secure_storage: ^9.0.0
   flutter_lints: ^2.0.0
 
 flutter:

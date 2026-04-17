@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:provider/provider.dart';
+import 'package:smart_lecture_notes/models/note.dart';
+import 'package:smart_lecture_notes/providers/notes_provider.dart';
 import 'package:smart_lecture_notes/screens/note_detail_screen.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 
@@ -12,54 +15,17 @@ class MyNotesScreen extends StatefulWidget {
 
 class _MyNotesScreenState extends State<MyNotesScreen> {
   final TextEditingController _searchController = TextEditingController();
-  List<NoteItem> allNotes = [
-    NoteItem(
-      category: 'Machine Learning',
-      title: 'Machine Learning Fundamentals',
-      date: 'Apr 14, 2026',
-      categoryColor: AppColors.primaryLight,
-    ),
-    NoteItem(
-      category: 'Physics',
-      title: 'Chapter 5 - Thermodynamics',
-      date: 'Apr 13, 2026',
-      categoryColor: AppColors.primaryLight,
-    ),
-    NoteItem(
-      category: 'Chemistry',
-      title: 'Organic Compounds',
-      date: 'Apr 12, 2026',
-      categoryColor: AppColors.primaryLight,
-    ),
-    NoteItem(
-      category: 'Mathematics',
-      title: 'Calculus - Integration',
-      date: 'Apr 11, 2026',
-      categoryColor: AppColors.primaryLight,
-    ),
-  ];
-
-  late List<NoteItem> filteredNotes;
+  String _query = '';
 
   @override
   void initState() {
     super.initState();
-    filteredNotes = allNotes;
     _searchController.addListener(_filterNotes);
   }
 
   void _filterNotes() {
-    final query = _searchController.text.toLowerCase();
     setState(() {
-      if (query.isEmpty) {
-        filteredNotes = allNotes;
-      } else {
-        filteredNotes = allNotes
-            .where((note) =>
-                note.title.toLowerCase().contains(query) ||
-                note.category.toLowerCase().contains(query))
-            .toList();
-      }
+      _query = _searchController.text.toLowerCase();
     });
   }
 
@@ -71,6 +37,15 @@ class _MyNotesScreenState extends State<MyNotesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final notes = context.watch<NotesProvider>().notes;
+    final filteredNotes = _query.isEmpty
+      ? notes
+      : notes
+        .where((note) =>
+          note.title.toLowerCase().contains(_query) ||
+          note.subject.toLowerCase().contains(_query))
+        .toList();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -142,7 +117,7 @@ class _MyNotesScreenState extends State<MyNotesScreen> {
                           color: AppColors.primaryLight.withOpacity(0.3),
                         ),
                         const SizedBox(height: 16),
-                        Text(
+                        const Text(
                           'No notes found',
                           style: TextStyle(
                             color: AppColors.textSecondary,
@@ -155,7 +130,7 @@ class _MyNotesScreenState extends State<MyNotesScreen> {
                           _searchController.text.isEmpty
                               ? 'Create your first note'
                               : 'Try different search terms',
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
@@ -180,13 +155,15 @@ class _MyNotesScreenState extends State<MyNotesScreen> {
     );
   }
 
-  Widget _buildNoteCard(NoteItem note) {
+  Widget _buildNoteCard(Note note) {
     return GestureDetector(
       onTap: () {
-        Get.to(() => NoteDetailScreen(
-          noteTitle: note.title,
-          categoryName: note.category,
-        ));
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => NoteDetailScreen(note: note),
+          ),
+        );
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -199,7 +176,7 @@ class _MyNotesScreenState extends State<MyNotesScreen> {
               width: 4,
               height: 70,
               decoration: BoxDecoration(
-                color: note.categoryColor,
+                color: AppColors.primaryLight,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -219,8 +196,8 @@ class _MyNotesScreenState extends State<MyNotesScreen> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      note.category,
-                      style: TextStyle(
+                      note.subject,
+                      style: const TextStyle(
                         color: AppColors.primary,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
@@ -240,7 +217,8 @@ class _MyNotesScreenState extends State<MyNotesScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    note.date,
+                    MaterialLocalizations.of(context)
+                        .formatMediumDate(note.createdAt),
                     style: const TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 12,
@@ -251,7 +229,7 @@ class _MyNotesScreenState extends State<MyNotesScreen> {
               ),
             ),
             // Arrow
-            Icon(
+            const Icon(
               Icons.arrow_forward_ios,
               size: 16,
               color: AppColors.textSecondary,
@@ -261,18 +239,4 @@ class _MyNotesScreenState extends State<MyNotesScreen> {
       ),
     );
   }
-}
-
-class NoteItem {
-  final String category;
-  final String title;
-  final String date;
-  final Color categoryColor;
-
-  NoteItem({
-    required this.category,
-    required this.title,
-    required this.date,
-    required this.categoryColor,
-  });
 }

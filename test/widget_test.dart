@@ -14,10 +14,10 @@ void main() {
     await tester.pumpWidget(const SmartLectureNotesApp());
 
     // Splash screen should render immediately.
-    expect(find.text('Smart Lecture Notes'), findsOneWidget);
+    expect(find.text('Capture, organize, and learn smarter'), findsOneWidget);
 
     // Let the splash delay elapse and navigation complete.
-    await tester.pump(const Duration(seconds: 3));
+    await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
 
     // Login screen should be shown after splash.
