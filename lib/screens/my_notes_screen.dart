@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/models/note.dart';
+import 'package:smart_lecture_notes/providers/note_provider.dart';
 import 'package:smart_lecture_notes/screens/note_detail_screen.dart';
-import 'package:smart_lecture_notes/services/notes_firestore_service.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 
 class MyNotesScreen extends StatefulWidget {
@@ -94,13 +95,18 @@ class _MyNotesScreenState extends State<MyNotesScreen> {
             ),
           ),
           Expanded(
-            child: StreamBuilder<List<Note>>(
-              stream: NotesFirestoreService().streamNotes(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
+            child: Consumer<NoteProvider>(
+              builder: (context, notesProvider, _) {
+                if (notesProvider.isLoading) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  );
+                }
+
+                if (notesProvider.error != null) {
                   return Center(
                     child: Text(
-                      snapshot.error.toString(),
+                      notesProvider.error!,
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 14,
@@ -110,13 +116,7 @@ class _MyNotesScreenState extends State<MyNotesScreen> {
                   );
                 }
 
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: AppColors.primary),
-                  );
-                }
-
-                final notes = snapshot.data ?? [];
+                final notes = notesProvider.notes;
                 final filteredNotes = _query.isEmpty
                     ? notes
                     : notes

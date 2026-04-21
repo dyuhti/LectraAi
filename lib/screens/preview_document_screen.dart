@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/models/note.dart';
 import 'package:smart_lecture_notes/providers/document_provider.dart';
 import 'package:smart_lecture_notes/screens/my_notes_screen.dart';
-import 'package:smart_lecture_notes/services/notes_firestore_service.dart';
+import 'package:smart_lecture_notes/providers/note_provider.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 
 class PreviewDocumentScreen extends StatefulWidget {
@@ -273,11 +273,11 @@ class _PreviewDocumentScreenState extends State<PreviewDocumentScreen> {
                   );
 
                   try {
-                    await NotesFirestoreService().saveNote(note);
+                    await context.read<NoteProvider>().createNote(note);
                     if (!mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Note saved to Firestore.'),
+                        content: Text('Note saved successfully.'),
                         duration: Duration(seconds: 2),
                       ),
                     );

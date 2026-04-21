@@ -8,7 +8,7 @@ class TranscriptionApiService {
         _baseUrl = baseUrl ??
             const String.fromEnvironment(
               'TRANSCRIBE_BASE_URL',
-              defaultValue: 'http://192.168.0.191:8001',
+              defaultValue: 'http://192.168.0.191:8003',
             );
 
   final http.Client _client;
@@ -88,6 +88,98 @@ class TranscriptionApiService {
       return data;
     } catch (e) {
       print('[API] PROCESS TRANSCRIPT EXCEPTION: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> saveTranscriptDirectly({
+    required String userId,
+    required String title,
+    required String rawText,
+    String subject = "Lecture Notes",
+    String cleanText = "",
+    String summary = "",
+    List<String> keyPoints = const [],
+  }) async {
+    try {
+      print('[API] Saving transcript directly to MongoDB');
+      print('[API] Backend URL: $_baseUrl/save-transcript');
+
+      final response = await _client
+          .post(
+            Uri.parse('$_baseUrl/save-transcript'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'userId': userId,
+              'title': title,
+              'subject': subject,
+              'rawText': rawText,
+              'cleanText': cleanText,
+              'summary': summary,
+              'keyPoints': keyPoints,
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      print('[API] Save response status: ${response.statusCode}');
+      print('[API] Save response body: ${response.body}');
+
+      final data = jsonDecode(response.body);
+      if (data is! Map<String, dynamic>) {
+        throw Exception('Invalid save response');
+      }
+
+      if (response.statusCode != 200) {
+        final errorMessage = data['error'] ?? 'Failed to save transcript';
+        throw Exception(errorMessage);
+      }
+
+      return data;
+    } catch (e) {
+      print('[API] SAVE TRANSCRIPT EXCEPTION: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> processAndSaveTranscript({
+    required String userId,
+    required String title,
+    required String rawText,
+    String subject = "Lecture Notes",
+  }) async {
+    try {
+      print('[API] Processing and saving transcript to MongoDB');
+      print('[API] Backend URL: $_baseUrl/process-and-save-transcript');
+
+      final response = await _client
+          .post(
+            Uri.parse('$_baseUrl/process-and-save-transcript'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'userId': userId,
+              'title': title,
+              'subject': subject,
+              'rawText': rawText,
+            }),
+          )
+          .timeout(const Duration(seconds: 90));
+
+      print('[API] Process-Save response status: ${response.statusCode}');
+      print('[API] Process-Save response body: ${response.body}');
+
+      final data = jsonDecode(response.body);
+      if (data is! Map<String, dynamic>) {
+        throw Exception('Invalid response');
+      }
+
+      if (response.statusCode != 200) {
+        final errorMessage = data['error'] ?? 'Failed to process and save transcript';
+        throw Exception(errorMessage);
+      }
+
+      return data;
+    } catch (e) {
+      print('[API] PROCESS_AND_SAVE EXCEPTION: $e');
       rethrow;
     }
   }

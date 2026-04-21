@@ -3,7 +3,8 @@ import 'package:get/get.dart';
 import 'my_notes_screen.dart';
 import 'package:smart_lecture_notes/models/note.dart';
 import 'package:smart_lecture_notes/services/api_service.dart';
-import 'package:smart_lecture_notes/services/notes_firestore_service.dart';
+import 'package:provider/provider.dart';
+import 'package:smart_lecture_notes/providers/note_provider.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 
 class AudioTranscriptScreen extends StatefulWidget {
@@ -117,9 +118,9 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
         keyPoints: keyPoints,
       );
 
-      await NotesFirestoreService().saveNote(note);
-      
-      print('[TRANSCRIPT] Note saved successfully to Firestore');
+      await context.read<NoteProvider>().createNote(note);
+
+      print('[TRANSCRIPT] Note saved successfully to Mongo API');
       
       Get.snackbar(
         'Success',

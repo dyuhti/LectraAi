@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/models/note.dart';
+import 'package:smart_lecture_notes/providers/note_provider.dart';
 import 'package:smart_lecture_notes/screens/note_detail_screen.dart';
-import 'package:smart_lecture_notes/services/notes_firestore_service.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 
 class NotesScreen extends StatefulWidget {
@@ -18,6 +20,10 @@ class _NotesScreenState extends State<NotesScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.primary),
+          onPressed: () => Get.back(),
+        ),
         elevation: 0,
         title: const Text(
           'My Notes',
@@ -29,13 +35,18 @@ class _NotesScreenState extends State<NotesScreen> {
         ),
         centerTitle: false,
       ),
-      body: StreamBuilder<List<Note>>(
-        stream: NotesFirestoreService().streamNotes(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
+      body: Consumer<NoteProvider>(
+        builder: (context, notesProvider, _) {
+          if (notesProvider.isLoading) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            );
+          }
+
+          if (notesProvider.error != null) {
             return Center(
               child: Text(
-                snapshot.error.toString(),
+                notesProvider.error!,
                 style: const TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 14,
@@ -45,13 +56,7 @@ class _NotesScreenState extends State<NotesScreen> {
             );
           }
 
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            );
-          }
-
-          final notes = snapshot.data ?? [];
+          final notes = notesProvider.notes;
           if (notes.isEmpty) {
             return Center(
               child: Column(

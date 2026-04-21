@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class Note {
   final String id;
   final String title;
@@ -25,8 +23,7 @@ class Note {
     this.examples = const [],
   });
 
-  factory Note.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
-    final data = doc.data() ?? {};
+  factory Note.fromJson(Map<String, dynamic> data) {
     final createdAt = _parseCreatedAt(data['createdAt']);
 
     final cleanedText = (data['cleanedText'] ?? '').toString();
@@ -38,7 +35,7 @@ class Note {
     final sourceText = _sourceText(summary, cleanedText, content);
 
     return Note(
-      id: doc.id,
+      id: (data['_id'] ?? data['id'] ?? '').toString(),
       title: (data['title'] ?? '').toString(),
       summary: summary,
       cleanedText: cleanedText,
@@ -57,8 +54,9 @@ class Note {
     );
   }
 
-  Map<String, dynamic> toFirestore() {
+  Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'title': title,
       'summary': summary,
       'keyPoints': keyPoints,
@@ -67,7 +65,7 @@ class Note {
       'subject': subject,
       'content': content,
       'cleanedText': cleanedText,
-      'createdAt': Timestamp.fromDate(createdAt),
+      'createdAt': createdAt.toIso8601String(),
     };
   }
 
@@ -191,11 +189,11 @@ class Note {
   }
 
   static DateTime _parseCreatedAt(dynamic value) {
-    if (value is Timestamp) {
-      return value.toDate();
-    }
     if (value is String) {
       return DateTime.tryParse(value) ?? DateTime.fromMillisecondsSinceEpoch(0);
+    }
+    if (value is int) {
+      return DateTime.fromMillisecondsSinceEpoch(value);
     }
     return DateTime.fromMillisecondsSinceEpoch(0);
   }

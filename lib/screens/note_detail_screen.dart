@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/models/note.dart';
+import 'package:smart_lecture_notes/providers/note_provider.dart';
 import 'package:smart_lecture_notes/screens/my_notes_screen.dart';
-import 'package:smart_lecture_notes/services/notes_firestore_service.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
+import 'package:smart_lecture_notes/widgets/edit_note_dialog.dart';
 
 class NoteDetailScreen extends StatefulWidget {
   final Note? note;
@@ -22,10 +24,17 @@ class NoteDetailScreen extends StatefulWidget {
 
 class _NoteDetailScreenState extends State<NoteDetailScreen> {
   bool _isDeleting = false;
+  Note? _currentNote;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentNote = widget.note;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final note = widget.note;
+    final note = _currentNote;
     final title = note?.title ?? widget.noteTitle ?? 'Note Details';
     final subject = note?.subject ?? widget.categoryName ?? 'Document';
     final createdAt = note?.createdAt ?? DateTime.now();
@@ -34,6 +43,7 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
     final formulas = note?.formulas ?? const [];
     final examples = note?.examples ?? const [];
     final canDelete = note != null && note.id.trim().isNotEmpty && !_isDeleting;
+    final canEdit = note != null && note.id.trim().isNotEmpty;
 
     final sections = <Widget>[];
     if (summary.isNotEmpty) {
@@ -110,6 +120,12 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
           ),
         ),
         actions: [
+          IconButton(
+            tooltip: 'Edit note',
+            icon: const Icon(Icons.edit_outlined, color: AppColors.primary),
+            onPressed: canEdit ? () => _showEditDialog(context) : null,
+          ),
+          const SizedBox(width: 4),
           IconButton(
             tooltip: 'Delete note',
             icon: const Icon(Icons.delete_outline, color: AppColors.primaryDark),
@@ -258,7 +274,7 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
   }
 
   Future<void> _deleteNote() async {
-    final note = widget.note;
+    final note = _currentNote;
     if (note == null || note.id.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -274,7 +290,7 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
     });
 
     try {
-      await NotesFirestoreService().deleteNote(note.id);
+      await context.read<NoteProvider>().deleteNote(note.id);
       if (!mounted) return;
       setState(() {
         _isDeleting = false;
@@ -437,5 +453,51 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
 
   String _formatFullDate(BuildContext context, DateTime date) {
     return MaterialLocalizations.of(context).formatFullDate(date);
+  }
+
+  Future<void> _showEditDialog(BuildContext context) async {
+    final note = _currentNote;
+    if (note == null) {
+      return;
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (_) => EditNoteDialog(
+        note: note,
+        onSave: _handleNoteUpdate,
+      ),
+    );
+  }
+
+  Future<void> _handleNoteUpdate(Note updatedNote) async {
+    debugPrint('[NoteDetailScreen] Update started for note: ${updatedNote.id}');
+    
+    try {
+      debugPrint('[NoteDetailScreen] Calling provider updateNote');
+      await context.read<NoteProvider>().updateNote(updatedNote);
+      debugPrint('[NoteDetailScreen] Provider updateNote completed');
+      
+      if (!mounted) {
+        debugPrint('[NoteDetailScreen] Widget unmounted after update');
+        return;
+      }
+      
+      setState(() {
+        _currentNote = updatedNote;
+      });
+      debugPrint('[NoteDetailScreen] Current note state updated');
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Note updated successfully.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e, stackTrace) {
+      debugPrint('[NoteDetailScreen] Error updating note: $e');
+      debugPrintStack(stackTrace: stackTrace);
+      rethrow; // Let dialog handle the error
+    }
   }
 }

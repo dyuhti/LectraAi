@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:smart_lecture_notes/firebase_options.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/routes/app_routes.dart';
 import 'package:smart_lecture_notes/routes/route_generator.dart';
 import 'package:smart_lecture_notes/providers/quiz_provider.dart';
-import 'package:smart_lecture_notes/providers/notes_provider.dart';
+import 'package:smart_lecture_notes/providers/note_provider.dart';
 import 'package:smart_lecture_notes/providers/document_provider.dart';
 import 'package:smart_lecture_notes/services/revision_reminder_service.dart';
 import 'package:smart_lecture_notes/widgets/custom_app_bar.dart';
@@ -17,7 +15,6 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await RevisionReminderService.initialize();
   await RevisionReminderService.requestPermissions();
-  await _initializeFirebase();
 
   const groqApiKey = String.fromEnvironment('GROQ_API_KEY');
   const isFlutterTest = bool.fromEnvironment('FLUTTER_TEST');
@@ -27,21 +24,6 @@ Future<void> main() async {
   }
 
   runApp(const SmartLectureNotesApp());
-}
-
-Future<void> _initializeFirebase() async {
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-  } on FirebaseException catch (e) {
-    // Firebase auto-initializes on Android, ignore duplicate-app errors
-    if (e.code != 'duplicate-app') {
-      debugPrint('Firebase initialization failed: $e');
-    }
-  } catch (e) {
-    debugPrint('Firebase initialization failed: $e');
-  }
 }
 
 class _MissingGroqKeyApp extends StatelessWidget {
@@ -77,7 +59,7 @@ class SmartLectureNotesApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => QuizProvider()),
-        ChangeNotifierProvider(create: (_) => NotesProvider()),
+        ChangeNotifierProvider(create: (_) => NoteProvider()),
         ChangeNotifierProvider(create: (_) => DocumentProvider()),
       ],
       child: GetMaterialApp(

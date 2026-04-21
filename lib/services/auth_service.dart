@@ -122,6 +122,14 @@ class AuthService {
     return null;
   }
 
+  Future<String?> getAuthToken() async {
+    final token = await _storage.read(key: 'auth_token');
+    if (token != null && token.trim().isNotEmpty) {
+      return token.trim();
+    }
+    return null;
+  }
+
   String? _decodeUserIdFromToken(String token) {
     try {
       final parts = token.split('.');
