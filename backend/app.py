@@ -36,7 +36,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 print("LOADED API KEY:", GROQ_API_KEY)
 GROQ_ENDPOINT = "https://api.groq.com/openai/v1/audio/transcriptions"
 GROQ_CHAT_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_CHAT_MODEL = os.getenv("GROQ_CHAT_MODEL", "llama-3.1-70b-versatile")
+GROQ_CHAT_MODEL = os.getenv("GROQ_CHAT_MODEL", "llama-3.1-8b-instant")
 
 # MongoDB Configuration
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/smartnotes")
