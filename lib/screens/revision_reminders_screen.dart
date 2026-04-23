@@ -488,82 +488,35 @@ class _RevisionRemindersScreenState extends State<RevisionRemindersScreen> {
             ),
           ],
         ),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Test Notification Button
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () async {
-                  try {
-                    await RevisionReminderService.scheduleTestNotification();
-                    // Debug: Check if OS registered the notification
-                    await Future.delayed(const Duration(milliseconds: 500));
-                    await RevisionReminderService.debugPendingNotifications();
-                    Get.snackbar(
-                      'Test Scheduled',
-                      'Notification will appear in 1 minute (check logs)',
-                      backgroundColor: AppColors.primary.withOpacity(0.9),
-                      colorText: Colors.white,
-                      duration: const Duration(seconds: 2),
-                    );
-                  } catch (e) {
-                    Get.snackbar(
-                      'Test Failed',
-                      'Error: $e',
-                      backgroundColor: Colors.red,
-                      colorText: Colors.white,
-                      duration: const Duration(seconds: 3),
-                    );
-                  }
-                },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                  side: const BorderSide(color: AppColors.primary, width: 2),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                child: const Text(
-                  'Test',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
             // Save Settings Button
-            Expanded(
-              child: ElevatedButton(
-                onPressed: _isSaving
-                    ? null
-                    : () => _persistAndSchedule(
-                          successMessage: 'Revision reminder settings updated.',
-                        ),
-                style: AppButtonStyles.primary(radius: 14),
-                child: _isSaving
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text(
-                        'Save Settings',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
+            ElevatedButton(
+              onPressed: _isSaving
+                  ? null
+                  : () => _persistAndSchedule(
+                        successMessage: 'Revision reminder settings updated.',
                       ),
-              ),
+              style: AppButtonStyles.primary(radius: 14),
+              child: _isSaving
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      'Save Settings',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
             ),
           ],
         ),

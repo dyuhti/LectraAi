@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:smart_lecture_notes/routes/app_routes.dart';
+import 'package:smart_lecture_notes/screens/forgot_password_screen.dart';
 import 'package:smart_lecture_notes/services/auth_service.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 import 'package:smart_lecture_notes/widgets/auth_widgets.dart';
@@ -23,6 +24,17 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   @override
   void initState() {
     super.initState();
+    _loadRememberedEmail();
+  }
+
+  Future<void> _loadRememberedEmail() async {
+    final rememberedEmail = await _authService.getRememberedEmail();
+    if (rememberedEmail != null && mounted) {
+      setState(() {
+        _emailController.text = rememberedEmail;
+        _rememberMe = true;
+      });
+    }
   }
 
   String? _validateEmail(String? value) {
@@ -58,6 +70,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       final success = await _authService.login(
         _emailController.text,
         _passwordController.text,
+        rememberMe: _rememberMe,
       );
 
       if (!mounted) return;
@@ -77,6 +90,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         content: Text(message),
         backgroundColor: Colors.red.shade600,
       ),
+    );
+  }
+
+  void _openForgotPasswordModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const ForgotPasswordModal(),
     );
   }
 
@@ -234,9 +256,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               const SizedBox(width: 12),
                               GestureDetector(
                                 onTap: () {
-                                  Navigator.of(context).pushNamed(
-                                    AppRoutes.forgotPassword,
-                                  );
+                                  _openForgotPasswordModal();
                                 },
                                 child: const Text(
                                   'Forgot Password?',

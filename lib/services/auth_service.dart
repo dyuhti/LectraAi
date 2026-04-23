@@ -9,11 +9,14 @@ class AuthService {
   final http.Client _client;
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
-  static const String _baseUrl = 'http://192.168.0.191:5000/api/auth';
+  static const String _baseUrl = String.fromEnvironment(
+    'AUTH_BASE_URL',
+    defaultValue: 'http://10.0.2.2:5001/api/auth',
+  );
 
   String? lastError;
 
-  Future<bool> login(String email, String password) async {
+  Future<bool> login(String email, String password, {bool rememberMe = false}) async {
     lastError = null;
     try {
       final response = await _client.post(
@@ -32,6 +35,13 @@ class AuthService {
           await _storage.write(key: 'auth_token', value: token);
         }
         await _storeUserId(data);
+        
+        if (rememberMe) {
+          await _storage.write(key: 'remember_email', value: email.trim());
+        } else {
+          await _storage.delete(key: 'remember_email');
+        }
+        
         return true;
       }
 
@@ -144,5 +154,14 @@ class AuthService {
     } catch (_) {
       return null;
     }
+  }
+
+  Future<String?> getRememberedEmail() async {
+    return await _storage.read(key: 'remember_email');
+  }
+
+  Future<void> logout() async {
+    await _storage.delete(key: 'auth_token');
+    await _storage.delete(key: 'user_id');
   }
 }

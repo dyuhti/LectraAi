@@ -14,7 +14,7 @@ class NotesApiService {
         _baseUrl = baseUrl ??
             const String.fromEnvironment(
               'NOTES_BASE_URL',
-              defaultValue: 'http://192.168.0.191:5000',
+              defaultValue: 'http://10.0.2.2:5001',
             );
 
   final http.Client _client;
@@ -100,6 +100,47 @@ class NotesApiService {
 
     if (response.statusCode != 200) {
       throw Exception(_extractError(response.body, 'Failed to delete note'));
+    }
+  }
+
+  Future<void> submitFeedback({
+    required String feedback,
+    String? name,
+    String? email,
+    String? userId,
+  }) async {
+    try {
+      print('[FEEDBACK] Submitting feedback to: $_baseUrl/feedback');
+      print('[FEEDBACK] Name: ${name ?? "Not provided"}');
+      print('[FEEDBACK] Email: ${email ?? "Not provided"}');
+      print('[FEEDBACK] Feedback length: ${feedback.length} characters');
+
+      final response = await _client
+          .post(
+            Uri.parse('$_baseUrl/feedback'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'name': name ?? '',
+              'email': email ?? '',
+              'feedback': feedback,
+              'userId': userId ?? '',
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      print('[FEEDBACK] Response status: ${response.statusCode}');
+      print('[FEEDBACK] Response body: ${response.body}');
+
+      if (response.statusCode != 200) {
+        final errorMsg = _extractError(response.body, 'Failed to submit feedback');
+        print('[FEEDBACK] ERROR: $errorMsg');
+        throw Exception(errorMsg);
+      }
+
+      print('[FEEDBACK] SUCCESS: Feedback submitted successfully');
+    } catch (e) {
+      print('[FEEDBACK] EXCEPTION: $e');
+      rethrow;
     }
   }
 

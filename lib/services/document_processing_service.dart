@@ -9,7 +9,12 @@ import 'package:syncfusion_flutter_pdf/pdf.dart';
 enum _FileType { pdf, image, text }
 
 class DocumentProcessingService {
-  static Future<Map<String, dynamic>> processFile(String path) async {
+  static Future<Map<String, dynamic>> processFile(
+    String path, {
+    bool isExtract = true,
+    bool isSummarize = true,
+    bool isKeyword = true,
+  }) async {
     final fileType = _detectFileType(path);
     debugPrint('DocumentProcessingService: path=$path type=$fileType');
 
@@ -36,22 +41,26 @@ class DocumentProcessingService {
     final journalInfo = _extractJournalInfo(normalizedLines);
     final isResearchPaper =
         abstractText.isNotEmpty || doi.isNotEmpty || journalInfo.isNotEmpty;
-    final detailLines = _extractDetailLines(
+    
+    // Conditionally extract detail lines (keywords) if enabled
+    final detailLines = isKeyword ? _extractDetailLines(
       normalizedLines,
       title: title,
       isResearchPaper: isResearchPaper,
       abstractText: abstractText,
       doi: doi,
       journalInfo: journalInfo,
-    );
-    final summary = await _generateDocumentSummary(normalizedText);
+    ) : [];
+    
+    // Conditionally generate summary if enabled
+    final summary = isSummarize ? await _generateDocumentSummary(normalizedText) : '';
 
     debugPrint(
-      'DocumentProcessingService: textLength=${normalizedText.length} summary=${_truncateForLog(summary)}',
+      'DocumentProcessingService: textLength=${normalizedText.length} summary=${_truncateForLog(summary)} extract=$isExtract summarize=$isSummarize keyword=$isKeyword',
     );
 
     return {
-      'text': normalizedText,
+      'text': isExtract ? normalizedText : '',
       'summary': summary,
       'title': title,
       'authors': authors,

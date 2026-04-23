@@ -14,7 +14,12 @@ class DocumentProvider extends ChangeNotifier {
   bool isLoading = false;
   String errorMessage = '';
 
-  Future<void> processFile(String path) async {
+  Future<void> processFile(
+    String path, {
+    bool isExtract = true,
+    bool isSummarize = true,
+    bool isKeyword = true,
+  }) async {
     isLoading = true;
     extractedText = '';
     summary = '';
@@ -22,7 +27,12 @@ class DocumentProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final result = await DocumentProcessingService.processFile(path);
+      final result = await DocumentProcessingService.processFile(
+        path,
+        isExtract: isExtract,
+        isSummarize: isSummarize,
+        isKeyword: isKeyword,
+      );
       extractedText = result['text']?.toString() ?? '';
       summary = result['summary']?.toString() ?? '';
       title = result['title']?.toString() ?? '';

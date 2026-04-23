@@ -15,6 +15,34 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+// Feedback submission endpoint
+app.post('/feedback', (req, res) => {
+  try {
+    const { name, email, feedback } = req.body;
+
+    // Validate feedback is required
+    if (!feedback || !feedback.trim()) {
+      console.error('[FEEDBACK] Missing feedback text');
+      return res.status(400).json({ error: 'Feedback is required' });
+    }
+
+    // Log feedback submission
+    console.log('[FEEDBACK] Received feedback submission');
+    console.log(`  Name: ${name || 'Not provided'}`);
+    console.log(`  Email: ${email || 'Not provided'}`);
+    console.log(`  Feedback: ${feedback.substring(0, 100)}...`);
+
+    // Return success response
+    res.status(200).json({ 
+      message: 'Feedback submitted successfully',
+      feedbackId: Date.now().toString(),
+    });
+  } catch (error) {
+    console.error('[FEEDBACK] Error processing feedback:', error);
+    res.status(500).json({ error: 'Failed to submit feedback' });
+  }
+});
+
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/notes', require('./routes/notes'));
 app.use('/transcribe', require('./routes/transcribe'));

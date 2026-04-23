@@ -8,10 +8,16 @@ import 'package:smart_lecture_notes/theme/app_theme.dart';
 class DocumentProcessingScreen extends StatefulWidget {
   final String fileName;
   final String? filePath;
+  final bool isExtract;
+  final bool isSummarize;
+  final bool isKeyword;
 
   const DocumentProcessingScreen({
     required this.fileName, Key? key,
     this.filePath,
+    this.isExtract = true,
+    this.isSummarize = true,
+    this.isKeyword = true,
   }) : super(key: key);
 
   @override
@@ -43,7 +49,12 @@ class _DocumentProcessingScreenState extends State<DocumentProcessingScreen>
     if (filePath == null || filePath.isEmpty) {
       provider.setError('Missing file path.');
     } else {
-      await provider.processFile(filePath);
+      await provider.processFile(
+        filePath,
+        isExtract: widget.isExtract,
+        isSummarize: widget.isSummarize,
+        isKeyword: widget.isKeyword,
+      );
     }
 
     if (!mounted) return;

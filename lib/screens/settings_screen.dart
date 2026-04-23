@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:smart_lecture_notes/routes/app_routes.dart';
+import 'package:smart_lecture_notes/screens/feedback_screen.dart';
+import 'package:smart_lecture_notes/screens/privacy_policy_screen.dart';
+import 'package:smart_lecture_notes/services/auth_service.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -10,10 +13,42 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _darkMode = false;
   bool _notifications = true;
   bool _soundEnabled = true;
   final String _appVersion = '1.0.0';
+  final AuthService _authService = AuthService();
+
+  Future<void> _handleLogout() async {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _authService.logout();
+              if (mounted) {
+                Navigator.of(context).pushNamedAndRemoveUntil(
+                  AppRoutes.login,
+                  (route) => false,
+                );
+              }
+            },
+            child: const Text(
+              'Logout',
+              style: TextStyle(color: AppColors.primary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +57,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.primary),
+          icon: Icon(Icons.arrow_back, color: AppColors.primary),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -165,71 +200,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Appearance
-                  const Text(
-                    'Appearance',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: AppDecorations.card(),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Dark Mode',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              'Easy on the eyes in low light',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Transform.scale(
-                          scale: 0.8,
-                          child: Switch(
-                            value: _darkMode,
-                            onChanged: (value) {
-                              setState(() => _darkMode = value);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    value ? 'Dark mode enabled' : 'Light mode enabled',
-                                  ),
-                                  backgroundColor: AppColors.primary,
-                                  duration: const Duration(seconds: 1),
-                                ),
-                              );
-                            },
-                            activeThumbColor: AppColors.primary,
-                            activeTrackColor:
-                                AppColors.primaryLight.withOpacity(0.3),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
                   // Help & Support
                   const Text(
                     'Help & Support',
@@ -244,14 +214,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _buildSettingCard(
                     icon: Icons.help_outline,
                     title: 'Help Center',
-                    subtitle: 'FAQs and tutorials',
+                    subtitle: 'FAQs and App Guide',
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Opening help documentation...'),
-                          backgroundColor: AppColors.primary,
-                        ),
-                      );
+                      Navigator.of(context).pushNamed(AppRoutes.helpCenter);
                     },
                   ),
                   const SizedBox(height: 12),
@@ -261,10 +226,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: 'Feedback & Suggestions',
                     subtitle: 'Help us improve the app',
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Opening feedback form...'),
-                          backgroundColor: AppColors.primary,
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const FeedbackScreen(),
                         ),
                       );
                     },
@@ -276,10 +240,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: 'Privacy Policy',
                     subtitle: 'Our privacy statement',
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Opening privacy policy...'),
-                          backgroundColor: AppColors.primary,
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const PrivacyPolicyScreen(),
                         ),
                       );
                     },
@@ -326,9 +289,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        const Divider(color: AppColors.border),
+                        Divider(color: AppColors.border),
                         const SizedBox(height: 12),
-                        const Text(
+                        Text(
                           'Smart Lecture Notes',
                           style: TextStyle(
                             fontSize: 14,
@@ -337,7 +300,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        const Text(
+                        Text(
                           'AI-powered educational productivity app for efficient lecture note-taking and study management.',
                           style: TextStyle(
                             fontSize: 14,
@@ -349,6 +312,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 24),
+
+                  // Logout Button
+                  GestureDetector(
+                    onTap: _handleLogout,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border, width: 1.5),
+                        color: AppColors.primaryLight.withOpacity(0.12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.logout, color: AppColors.primary, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Logout',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
                   const SizedBox(height: 80),
                 ],
               ),
@@ -388,7 +381,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: AppColors.primary,
@@ -397,7 +390,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       color: AppColors.textSecondary,
                       fontWeight: FontWeight.w500,
@@ -406,7 +399,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             ),
-            const Icon(
+            Icon(
               Icons.arrow_forward_ios,
               color: AppColors.textSecondary,
               size: 16,

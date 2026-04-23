@@ -19,6 +19,8 @@ import 'package:smart_lecture_notes/screens/review_answers_screen.dart';
 import 'package:smart_lecture_notes/screens/revision_reminders_screen.dart';
 import 'package:smart_lecture_notes/screens/study_dashboard_screen.dart';
 import 'package:smart_lecture_notes/screens/settings_screen.dart';
+import 'package:smart_lecture_notes/screens/help_center_screen.dart';
+import 'package:smart_lecture_notes/screens/help_tutorial_screen.dart';
 import 'package:smart_lecture_notes/routes/page_transitions.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 
@@ -102,6 +104,13 @@ class RouteGenerator {
 
       case AppRoutes.settings:
         return _buildRoute(const SettingsScreen());
+
+      case AppRoutes.helpCenter:
+        return _buildRoute(const HelpCenterScreen());
+
+      case AppRoutes.appGuide:
+      case AppRoutes.tutorial:
+        return _buildRoute(const HelpTutorialScreen());
 
       // Default fallback
       default:

@@ -19,6 +19,11 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
   bool _isUploading = false;
   double _uploadProgress = 0;
   final ImagePicker _imagePicker = ImagePicker();
+  
+  // Processing Options - All enabled by default
+  bool isExtract = true;
+  bool isSummarize = true;
+  bool isKeyword = true;
 
   @override
   Widget build(BuildContext context) {
@@ -132,18 +137,31 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
               icon: Icons.auto_awesome,
               title: 'AI Text Extraction',
               description: 'Extract and digitize text using OCR',
+              note: 'Enabled by default for best results',
+              value: isExtract,
+              onChanged: (value) {
+                setState(() => isExtract = value ?? true);
+              },
             ),
             const SizedBox(height: 10),
             _buildProcessingOption(
               icon: Icons.summarize,
               title: 'Auto Summarize',
               description: 'Generate summary of extracted content',
+              value: isSummarize,
+              onChanged: (value) {
+                setState(() => isSummarize = value ?? true);
+              },
             ),
             const SizedBox(height: 10),
             _buildProcessingOption(
               icon: Icons.label,
               title: 'Keyword Extraction',
               description: 'Identify key topics and concepts',
+              value: isKeyword,
+              onChanged: (value) {
+                setState(() => isKeyword = value ?? true);
+              },
             ),
             const SizedBox(height: 24),
 
@@ -349,6 +367,9 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
     required IconData icon,
     required String title,
     required String description,
+    required bool value,
+    required ValueChanged<bool?> onChanged,
+    String? note,
   }) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -387,13 +408,46 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
+                if (note != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    note,
+                    style: const TextStyle(
+                      color: AppColors.primaryLight,
+                      fontSize: 11,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
           Checkbox(
-            value: true,
-            onChanged: (value) {},
-            fillColor: WidgetStateProperty.all(AppColors.primary),
+            value: value,
+            onChanged: onChanged,
+            fillColor: MaterialStateProperty.resolveWith(
+              (Set<MaterialState> states) {
+                if (states.contains(MaterialState.selected)) {
+                  return AppColors.primary; // Blue when checked
+                }
+                return Colors.white; // White when unchecked
+              },
+            ),
+            checkColor: Colors.white, // White tick mark
+            side: MaterialStateBorderSide.resolveWith(
+              (Set<MaterialState> states) {
+                if (states.contains(MaterialState.selected)) {
+                  return const BorderSide(
+                    color: AppColors.primary,
+                    width: 2,
+                  );
+                }
+                return const BorderSide(
+                  color: AppColors.border,
+                  width: 1.5,
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -628,12 +682,28 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
 
     await Future.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
+    
+    // Validate that at least one processing option is selected
+    if (!isExtract && !isSummarize && !isKeyword) {
+      Get.snackbar(
+        'No Options Selected',
+        'Please enable at least one processing option (AI Text Extraction, Auto Summarize, or Keyword Extraction)',
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 3),
+      );
+      return;
+    }
+    
     final primary = selectedFiles.first;
     Navigator.of(context).push(
       AppPageTransitions.fadeSlide(
         DocumentProcessingScreen(
           fileName: primary.name,
           filePath: primary.path,
+          isExtract: isExtract,
+          isSummarize: isSummarize,
+          isKeyword: isKeyword,
         ),
       ),
     );

@@ -88,7 +88,7 @@ class _SignupScreenState extends State<SignupScreen> with SingleTickerProviderSt
       setState(() => _isLoading = false);
 
       if (success) {
-        Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+        Navigator.of(context).pushReplacementNamed(AppRoutes.login);
       } else {
         _showError(_authService.lastError ?? 'Signup failed');
       }

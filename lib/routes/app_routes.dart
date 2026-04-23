@@ -36,6 +36,9 @@ class AppRoutes {
   // User Settings
   static const String profile = '/profile';
   static const String settings = '/settings';
+  static const String helpCenter = '/help-center';
+  static const String appGuide = '/app-guide';
+  static const String tutorial = '/tutorial';
 
   /// Get route name for display/debugging
   static String getRouteName(String route) {
@@ -60,6 +63,9 @@ class AppRoutes {
       studyAnalytics: 'Study Analytics',
       profile: 'Profile',
       settings: 'Settings',
+      helpCenter: 'Help Center',
+      appGuide: 'App Guide',
+      tutorial: 'App Guide',
     };
     return routeNames[route] ?? 'Unknown Route';
   }
