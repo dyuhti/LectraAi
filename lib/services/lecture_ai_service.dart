@@ -75,7 +75,10 @@ $transcript
   }
 
   /// Generate a concise document summary (3-5 lines).
-  Future<String> generateDocumentSummary(String text) async {
+  Future<String> generateDocumentSummary(
+    String text, {
+    String mode = 'exam',
+  }) async {
     if (_apiKey.isEmpty) {
       throw Exception(_missingKeyMessage);
     }
@@ -84,11 +87,24 @@ $transcript
       return 'No content available.';
     }
 
+    final normalizedMode = mode.trim().toLowerCase();
+    final modeInstruction = switch (normalizedMode) {
+      'beginner' =>
+        'Use simple language and define difficult terms briefly.',
+      'panic' =>
+        'Prioritize the most test-relevant facts first in very concise wording.',
+      'accessibility' =>
+        'Use clear, short sentences that are easy to read aloud via text-to-speech.',
+      _ =>
+        'Focus on exam-oriented clarity and retention of key facts.',
+    };
+
     final prompt = '''
 Summarize the following document in 3 to 5 lines.
 Each line should be one concise sentence.
 Do not use bullets or numbering.
 Avoid assumptions and focus only on the provided text.
+$modeInstruction
 
 Document:
 $text

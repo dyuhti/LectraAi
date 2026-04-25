@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
 import 'package:smart_lecture_notes/providers/note_provider.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
+import 'package:smart_lecture_notes/utils/tts_text_builder.dart';
 
 class AudioTranscriptScreen extends StatefulWidget {
   final String? transcript;
@@ -168,8 +169,9 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
       widget.summary?['keyPoints'] ?? widget.summary?['key_points'],
     );
     final lectureTitle = _safeString(widget.summary?['lectureTitle']);
+    final transcriptText = _safeString(widget.transcript);
     _publishScreenText(
-      getScreenText(summaryText, keyPoints, lectureTitle),
+      getScreenText(summaryText, keyPoints, lectureTitle, transcriptText),
     );
 
     return Scaffold(
@@ -412,19 +414,24 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
     String summaryText,
     List<String> keyPoints,
     String lectureTitle,
+    String transcriptText,
   ) {
-    return [
-      'AI notes screen.',
-      lectureTitle,
-      summaryText,
-      if (keyPoints.isNotEmpty) keyPoints.join(' '),
-    ].join(' ');
+    final structuredContent = [
+      if (summaryText.trim().isNotEmpty) 'Summary. ${summaryText.trim()}',
+      if (transcriptText.trim().isNotEmpty) 'Full cleaned text. ${transcriptText.trim()}',
+    ].join('\n\n');
+
+    return buildStructuredText(
+      title: lectureTitle.isNotEmpty ? lectureTitle : 'AI Notes',
+      content: structuredContent,
+      keyPoints: keyPoints,
+    );
   }
 
   void _publishScreenText(String text) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<AccessibilityProvider>().setScreenText(text);
+      context.read<AccessibilityProvider>().setScreenTextIfCurrent(context, text);
     });
   }
 }

@@ -6,6 +6,7 @@ import 'package:smart_lecture_notes/providers/note_provider.dart';
 import 'package:smart_lecture_notes/screens/my_notes_screen.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 import 'package:smart_lecture_notes/widgets/edit_note_dialog.dart';
+import 'package:smart_lecture_notes/utils/tts_text_builder.dart';
 
 class NoteDetailScreen extends StatefulWidget {
   final Note? note;
@@ -42,21 +43,24 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
     final formulas = note?.formulas ?? const [];
     final examples = note?.examples ?? const [];
 
-    return [
-      'Note details.',
-      title,
-      subject,
-      if (summary.isNotEmpty) summary,
-      if (keyPoints.isNotEmpty) keyPoints.join(' '),
-      if (formulas.isNotEmpty) formulas.join(' '),
-      if (examples.isNotEmpty) examples.join(' '),
-    ].join(' ');
+    final structuredContent = [
+      'Subject. $subject.',
+      if (summary.isNotEmpty) 'Summary. $summary',
+      if (formulas.isNotEmpty) 'Formulas. ${formulas.join('. ')}',
+      if (examples.isNotEmpty) 'Examples. ${examples.join('. ')}',
+    ].join('\n\n');
+
+    return buildStructuredText(
+      title: title,
+      content: structuredContent,
+      keyPoints: keyPoints,
+    );
   }
 
   void _publishScreenText(String text) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<AccessibilityProvider>().setScreenText(text);
+      context.read<AccessibilityProvider>().setScreenTextIfCurrent(context, text);
     });
   }
 

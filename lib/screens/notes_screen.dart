@@ -6,6 +6,7 @@ import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
 import 'package:smart_lecture_notes/providers/note_provider.dart';
 import 'package:smart_lecture_notes/screens/note_detail_screen.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
+import 'package:smart_lecture_notes/utils/tts_text_builder.dart';
 
 class NotesScreen extends StatefulWidget {
   const NotesScreen({Key? key}) : super(key: key);
@@ -109,17 +110,31 @@ class _NotesScreenState extends State<NotesScreen> {
   String getScreenText(BuildContext context) {
     final notes = context.read<NoteProvider>().notes;
     if (notes.isEmpty) {
-      return 'My notes screen. No notes yet. Upload and process documents to create notes.';
+      return buildStructuredText(
+        title: 'My notes',
+        content: 'No notes yet. Upload and process documents to create notes.',
+        keyPoints: const [],
+      );
     }
 
-    final titles = notes.take(3).map((note) => note.title).join(' ');
-    return 'My notes screen. ${notes.length} notes available. $titles';
+    final titles = notes.take(3).map((note) => note.title).toList();
+    final summaries = notes
+        .take(3)
+        .map((note) => note.summary.trim())
+        .where((summary) => summary.isNotEmpty)
+        .toList();
+
+    return buildStructuredText(
+      title: 'My notes',
+      content: '${notes.length} notes available. Browse and open a note to see summary, key points, formulas, and examples.\n\n${summaries.join('\n\n')}',
+      keyPoints: titles,
+    );
   }
 
   void _publishScreenText(String text) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<AccessibilityProvider>().setScreenText(text);
+      context.read<AccessibilityProvider>().setScreenTextIfCurrent(context, text);
     });
   }
 

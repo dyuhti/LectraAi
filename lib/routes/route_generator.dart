@@ -25,6 +25,7 @@ import 'package:smart_lecture_notes/routes/page_transitions.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
 import 'package:smart_lecture_notes/widgets/tts_control_widget.dart';
+import 'package:smart_lecture_notes/utils/tts_text_builder.dart';
 import 'package:provider/provider.dart';
 
 /// Route Generator
@@ -249,24 +250,6 @@ class AccessibilityRouteHost extends StatefulWidget {
 }
 
 class _AccessibilityRouteHostState extends State<AccessibilityRouteHost> {
-  bool _hasRegisteredDefaultText = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_hasRegisteredDefaultText) {
-      return;
-    }
-
-    _hasRegisteredDefaultText = true;
-    final routeName = ModalRoute.of(context)?.settings.name;
-    final defaultText = RouteGenerator._screenTextForRoute(routeName, widget.page);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      context.read<AccessibilityProvider>().setScreenText(defaultText);
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final isEnabled = context.watch<AccessibilityProvider>().isEnabled;
@@ -274,7 +257,17 @@ class _AccessibilityRouteHostState extends State<AccessibilityRouteHost> {
 
     return Stack(
       children: [
-        widget.page,
+        _RouteTextCollector(
+          child: widget.page,
+          onTextExtracted: (text) {
+            if (!mounted || text.trim().isEmpty) return;
+            context.read<AccessibilityProvider>().setScreenTextIfCurrent(
+              context,
+              text,
+              priority: 1,
+            );
+          },
+        ),
         if (isEnabled && screenText.isNotEmpty)
           Align(
             alignment: Alignment.bottomCenter,
@@ -285,5 +278,127 @@ class _AccessibilityRouteHostState extends State<AccessibilityRouteHost> {
           ),
       ],
     );
+  }
+}
+
+class _RouteTextCollector extends StatefulWidget {
+  const _RouteTextCollector({
+    required this.child,
+    required this.onTextExtracted,
+  });
+
+  final Widget child;
+  final ValueChanged<String> onTextExtracted;
+
+  @override
+  State<_RouteTextCollector> createState() => _RouteTextCollectorState();
+}
+
+class _RouteTextCollectorState extends State<_RouteTextCollector> {
+  final GlobalKey _captureRootKey = GlobalKey();
+  String _lastExtractedText = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleExtraction();
+  }
+
+  @override
+  void didUpdateWidget(covariant _RouteTextCollector oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _scheduleExtraction();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    _scheduleExtraction();
+    return KeyedSubtree(
+      key: _captureRootKey,
+      child: widget.child,
+    );
+  }
+
+  void _scheduleExtraction() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final rootContext = _captureRootKey.currentContext;
+      if (rootContext == null) return;
+
+      final extracted = _extractStructuredText(rootContext);
+      if (extracted.isEmpty || extracted == _lastExtractedText) {
+        return;
+      }
+
+      _lastExtractedText = extracted;
+      widget.onTextExtracted(extracted);
+    });
+  }
+
+  String _extractStructuredText(BuildContext context) {
+    final lines = <String>[];
+
+    void collectFromSpan(InlineSpan? span) {
+      if (span == null) return;
+      final text = span.toPlainText().trim();
+      if (text.isNotEmpty) {
+        lines.addAll(_normalizeLines(text));
+      }
+    }
+
+    void visit(Element element) {
+      final widget = element.widget;
+
+      if (widget is Text) {
+        final text = widget.data ?? widget.textSpan?.toPlainText() ?? '';
+        lines.addAll(_normalizeLines(text));
+      } else if (widget is RichText) {
+        collectFromSpan(widget.text);
+      } else if (widget is SelectableText) {
+        final text = widget.data ?? widget.textSpan?.toPlainText() ?? '';
+        lines.addAll(_normalizeLines(text));
+      } else if (widget is EditableText) {
+        lines.addAll(_normalizeLines(widget.controller.text));
+      }
+
+      element.visitChildren(visit);
+    }
+
+    (context as Element).visitChildren(visit);
+
+    final uniqueLines = <String>[];
+    final seen = <String>{};
+    for (final line in lines) {
+      if (seen.add(line)) {
+        uniqueLines.add(line);
+      }
+    }
+
+    if (uniqueLines.isEmpty) {
+      return '';
+    }
+
+    final title = uniqueLines.first;
+    final remaining = uniqueLines.length > 1 ? uniqueLines.sublist(1) : <String>[];
+
+    return buildStructuredText(
+      title: title,
+      content: 'All visible content from this screen is listed point by point for guided reading.',
+      keyPoints: remaining,
+    );
+  }
+
+  List<String> _normalizeLines(String text) {
+    return text
+        .split('\n')
+        .map((line) => line.replaceAll(RegExp(r'\s+'), ' ').trim())
+        .where((line) {
+          if (line.isEmpty) return false;
+          if (line.length == 1 && !RegExp(r'[A-Za-z0-9]').hasMatch(line)) {
+            return false;
+          }
+          return true;
+        })
+        .toList();
   }
 }

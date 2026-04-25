@@ -10,6 +10,7 @@ import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
 import 'package:smart_lecture_notes/services/api_service.dart';
 import 'package:smart_lecture_notes/services/ocr_service.dart';
 import 'package:smart_lecture_notes/services/ai_service.dart';
+import 'package:smart_lecture_notes/utils/tts_text_builder.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -232,18 +233,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String _buildScreenText() {
     final selectedText = _selectedText.trim();
     if (selectedText.isNotEmpty) {
-      return 'Smart Notes home. Selected text: $selectedText';
+      return buildStructuredText(
+        title: 'Smart Notes home',
+        content: 'Selected text. $selectedText',
+        keyPoints: const [],
+      );
     }
 
-    return 'Smart Notes. Your AI-powered lecture companion. '
-        'Capture and create notes. Quick capture. View notes. '
-        'Today study progress includes three notes created, two images captured, and one quiz generated.';
+    return buildStructuredText(
+      title: 'Smart Notes home',
+      content: 'Your AI-powered lecture companion. Capture and create notes. Quick capture. View notes. Today study progress includes three notes created, two images captured, and one quiz generated.',
+      keyPoints: const [
+        'Capture and create notes',
+        'Quick capture',
+        'View notes',
+      ],
+    );
   }
 
   void _publishScreenText(String text) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<AccessibilityProvider>().setScreenText(text);
+      context.read<AccessibilityProvider>().setScreenTextIfCurrent(context, text);
     });
   }
 

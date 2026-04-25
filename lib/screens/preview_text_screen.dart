@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 import 'package:smart_lecture_notes/services/ai_service.dart';
 import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
+import 'package:smart_lecture_notes/utils/tts_text_builder.dart';
 
 class PreviewTextScreen extends StatefulWidget {
   final String originalText;
@@ -44,7 +45,11 @@ class _PreviewTextScreenState extends State<PreviewTextScreen> {
   }
 
   // Build the text string for TTS
-  String get _ttsText => '$_title. $_content. ${_keyPoints.join('. ')}';
+  String get _ttsText => buildStructuredText(
+        title: _title,
+        content: _content,
+        keyPoints: _keyPoints,
+      );
 
   // Fetches notes using the current selected mode.
   Future<void> _applyMode() async {
@@ -323,13 +328,17 @@ class _PreviewTextScreenState extends State<PreviewTextScreen> {
   }
 
   String getScreenText() {
-    return '$_title $_content ${_keyPoints.join(' ')}';
+    return buildStructuredText(
+      title: _title,
+      content: _content,
+      keyPoints: _keyPoints,
+    );
   }
 
   void _publishScreenText(String text) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<AccessibilityProvider>().setScreenText(text);
+      context.read<AccessibilityProvider>().setScreenTextIfCurrent(context, text);
     });
   }
 }

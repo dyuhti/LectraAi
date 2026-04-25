@@ -7,6 +7,7 @@ import 'package:smart_lecture_notes/providers/document_provider.dart';
 import 'package:smart_lecture_notes/screens/my_notes_screen.dart';
 import 'package:smart_lecture_notes/providers/note_provider.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
+import 'package:smart_lecture_notes/utils/tts_text_builder.dart';
 
 class PreviewDocumentScreen extends StatefulWidget {
   const PreviewDocumentScreen({Key? key}) : super(key: key);
@@ -130,7 +131,12 @@ class _PreviewDocumentScreenState extends State<PreviewDocumentScreen> {
       detailLines: documentProvider.detailLines,
     );
     _publishScreenText(
-      getScreenText(noteTitle, formattedSummary, documentProvider.detailLines),
+      getScreenText(
+        noteTitle,
+        formattedSummary,
+        documentProvider.detailLines,
+        abstractText,
+      ),
     );
 
     return Scaffold(
@@ -336,19 +342,24 @@ class _PreviewDocumentScreenState extends State<PreviewDocumentScreen> {
     String title,
     String summary,
     List<String> detailLines,
+    String abstractText,
   ) {
-    return [
-      'Document preview screen.',
-      title,
-      summary,
-      if (detailLines.isNotEmpty) detailLines.join(' '),
-    ].join(' ');
+    final structuredContent = [
+      if (summary.trim().isNotEmpty) 'Summary. ${summary.trim()}',
+      if (abstractText.trim().isNotEmpty) 'Abstract. ${abstractText.trim()}',
+    ].join('\n\n');
+
+    return buildStructuredText(
+      title: title.isNotEmpty ? title : 'Document preview',
+      content: structuredContent,
+      keyPoints: detailLines,
+    );
   }
 
   void _publishScreenText(String text) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<AccessibilityProvider>().setScreenText(text);
+      context.read<AccessibilityProvider>().setScreenTextIfCurrent(context, text);
     });
   }
 }

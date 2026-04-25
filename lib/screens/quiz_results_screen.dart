@@ -4,6 +4,7 @@ import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
 import 'package:smart_lecture_notes/providers/quiz_provider.dart';
 import 'package:smart_lecture_notes/routes/app_routes.dart';
 import 'package:smart_lecture_notes/theme/quiz_theme.dart';
+import 'package:smart_lecture_notes/utils/tts_text_builder.dart';
 
 class QuizResultsScreen extends StatefulWidget {
   const QuizResultsScreen({Key? key}) : super(key: key);
@@ -211,13 +212,17 @@ class _QuizResultsScreenState extends State<QuizResultsScreen>
                 ? 'Keep practicing to strengthen recall.'
                 : 'Review the lecture notes and try again.';
 
-    return 'Quiz results. Score $scorePercentage percent. $correctCount out of $totalCount correct. $feedback';
+    return buildStructuredText(
+      title: 'Quiz results',
+      content: 'Score. $scorePercentage percent. Correct answers. $correctCount out of $totalCount. $feedback',
+      keyPoints: const [],
+    );
   }
 
   void _publishScreenText(String text) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<AccessibilityProvider>().setScreenText(text);
+      context.read<AccessibilityProvider>().setScreenTextIfCurrent(context, text);
     });
   }
 }
