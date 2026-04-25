@@ -4,10 +4,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:smart_lecture_notes/routes/app_routes.dart';
-import 'package:smart_lecture_notes/routes/page_transitions.dart';
+import 'package:smart_lecture_notes/screens/adaptive_notes_screen.dart';
 import 'package:smart_lecture_notes/screens/preview_text_screen.dart';
-import 'package:smart_lecture_notes/services/api_service.dart';
-import 'package:smart_lecture_notes/services/ocr_service.dart';
 import 'package:smart_lecture_notes/services/ai_service.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -35,9 +33,7 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
   static const double _radius = 24;
 
   late final AnimationController _ambient;
-  final TranscriptionApiService _apiService = TranscriptionApiService();
   final AiService _aiService = AiService();
-  bool _isScanning = false;
   
   // OCR Editor State
   late final TextEditingController _textController;
@@ -63,7 +59,6 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
   @override
   void dispose() {
     _ambient.dispose();
-    _apiService.dispose();
     _textController.dispose();
     if (_isListening) _speechToText.stop();
     super.dispose();
@@ -371,150 +366,31 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
         ),
         centerTitle: false,
       ),
-      body: Stack(
-        children: [
-          CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              SliverPadding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: horizontalPadding,
-                  vertical: 16,
-                ),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) => items[index],
-                    childCount: items.length,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (_isScanning)
-            const Positioned.fill(
-              child: _CaptureScanningOverlay(message: 'Scanning notes...'),
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          SliverPadding(
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontalPadding,
+              vertical: 16,
             ),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => items[index],
+                childCount: items.length,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Future<void> _handleCaptureBoardTap() async {
-    if (_isScanning) return;
-
-    setState(() => _isScanning = true);
-    final ocrService = OcrService();
-
-    try {
-      final ocrResult = await ocrService.captureAndExtractTextFromCamera();
-      if (!mounted || ocrResult == null) return;
-
-      final cleanedText = await _extractTextFromImage(ocrResult);
-
-      final aiResult = await _aiService.generateNotes(cleanedText, 'exam');
-
-      if (!mounted) return;
-
-      Navigator.of(context).push(
-        AppPageTransitions.fadeSlide(
-          PreviewTextScreen(
-            originalText: cleanedText,
-            title: aiResult['title']?.toString() ?? 'Generated Notes',
-            content: aiResult['content']?.toString() ?? '',
-            keyPoints: List<String>.from(aiResult['key_points'] ?? []),
-          ),
-        ),
-      );
-    } catch (e) {
-      print('[OCR] Capture Board Image failed: $e');
-      _showSnackbar('No text found. Try again.');
-    } finally {
-      ocrService.dispose();
-      if (mounted) {
-        setState(() => _isScanning = false);
-      }
-    }
-  }
-
-  Future<String> _extractTextFromImage(OcrScanResult capturedImage) async {
-    try {
-      final response = await _apiService.processImage(
-        imageBase64: capturedImage.imageBase64,
-      );
-      final text = (response['text'] ?? '').toString().trim();
-      if (text.isNotEmpty) {
-        return text;
-      }
-    } catch (e) {
-      print('[VISION] Image processing failed, using fallback text: $e');
-      if (mounted) {
-        _showSnackbar('Vision failed. You can retry from preview.');
-      }
-    }
-
-    return 'Unable to read text right now. Tap Retry Vision in preview.';
-  }
-
-  void _showSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
-}
-
-class _CaptureScanningOverlay extends StatelessWidget {
-  const _CaptureScanningOverlay({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: ColoredBox(
-        color: const Color(0x55000000),
-        child: Center(
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.96, end: 1.04),
-            duration: const Duration(milliseconds: 900),
-            curve: Curves.easeInOut,
-            builder: (context, scale, child) {
-              return Transform.scale(scale: scale, child: child);
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.12),
-                    blurRadius: 16,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2.2),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    message,
-                    style: const TextStyle(
-                      color: _CaptureCreateNotesScreenState._navy,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+  void _handleCaptureBoardTap() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const AdaptiveNotesScreen(),
       ),
     );
   }
@@ -903,7 +779,7 @@ class _HeroCaptureCardState extends State<_HeroCaptureCard>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                'Capture Board Image',
+                                'Adaptive Learning',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -917,7 +793,7 @@ class _HeroCaptureCardState extends State<_HeroCaptureCard>
                               const SizedBox(height: 4),
                               Flexible(
                                 child: Text(
-                                  'Scan handwritten board notes with AI OCR',
+                                  'Select your saved notes and apply smart learning modes',
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
