@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:smart_lecture_notes/services/reminder_api_service.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -33,6 +34,7 @@ class RevisionReminderService {
 
   static final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
+  static final ReminderApiService _apiService = ReminderApiService();
   static bool _initialized = false;
 
   static Future<void> initialize() async {
@@ -282,16 +284,27 @@ class RevisionReminderService {
       }
 
       try {
-        await _plugin.zonedSchedule(
-          id: 1000 + i,
-          title: 'Time to revise',
-          body: 'Open Smart Notes and review your saved notes.',
-          scheduledDate: scheduled,
-          notificationDetails: details,
-          androidScheduleMode: AndroidScheduleMode.alarmClock,
-          payload: 'revision_reminder_${1000 + i}',
-        );
-        successCount++;
+          await _plugin.zonedSchedule(
+            id: 1000 + i,
+            title: 'Time to revise',
+            body: 'Open Smart Notes and review your saved notes.',
+            scheduledDate: scheduled,
+            notificationDetails: details,
+            androidScheduleMode: AndroidScheduleMode.alarmClock,
+            payload: 'revision_reminder_${1000 + i}',
+          );
+          
+          // Sync with backend (limit to first 10 for performance)
+          if (i < 10) {
+            _apiService.createReminder(
+              title: 'Revision Reminder #${i + 1}',
+              description: 'Automated study session reminder',
+              reminderDateTime: scheduled,
+              repeat: settings.intervalDays == 1 ? 'daily' : (settings.intervalDays == 7 ? 'weekly' : 'none'),
+            ).catchError((e) => debugPrint('[RevisionReminderService] Backend sync failed: $e'));
+          }
+
+          successCount++;
       } catch (e) {
         debugPrint('[RevisionReminderService] ✗ Failed to schedule reminder #${i + 1}: $e');
         failureCount++;

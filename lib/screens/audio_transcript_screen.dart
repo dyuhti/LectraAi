@@ -5,6 +5,8 @@ import 'package:smart_lecture_notes/services/api_service.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
 import 'package:smart_lecture_notes/providers/note_provider.dart';
+import 'package:smart_lecture_notes/providers/progress_provider.dart';
+import 'package:smart_lecture_notes/services/auth_service.dart';
 import 'package:smart_lecture_notes/routes/app_routes.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 import 'package:smart_lecture_notes/utils/tts_text_builder.dart';
@@ -236,10 +238,17 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
           processedCleanText.isNotEmpty ? processedCleanText : transcript;
       final lectureTitle = _safeString(summaryData['lectureTitle']);
 
+      final authService = AuthService();
+      final userId = await authService.getUserId() ?? '';
+      
+      print('[AI_NOTES] Saving note for user: $userId');
+
       final note = Note(
+        userId: userId,
         title: lectureTitle.isNotEmpty
             ? lectureTitle
             : 'Lecture ${DateTime.now().toString().split(' ')[0]}',
+        transcript: transcript,
         subject: widget.sourceLabel,
         content: cleanedText,
         cleanedText: cleanedText,
@@ -250,6 +259,11 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
 
       await context.read<NoteProvider>().createNote(note);
       await context.read<NoteProvider>().loadNotes();
+      
+      // Refresh daily progress counts
+      if (mounted) {
+        context.read<ProgressProvider>().refreshProgress();
+      }
 
       print('[AI_NOTES] Note saved successfully to Mongo API');
       

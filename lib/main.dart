@@ -8,6 +8,7 @@ import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
 import 'package:smart_lecture_notes/providers/quiz_provider.dart';
 import 'package:smart_lecture_notes/providers/note_provider.dart';
 import 'package:smart_lecture_notes/providers/document_provider.dart';
+import 'package:smart_lecture_notes/providers/progress_provider.dart';
 import 'package:smart_lecture_notes/services/revision_reminder_service.dart';
 import 'package:smart_lecture_notes/widgets/custom_app_bar.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
@@ -63,6 +64,7 @@ class SmartLectureNotesApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => NoteProvider()),
         ChangeNotifierProvider(create: (_) => DocumentProvider()),
         ChangeNotifierProvider(create: (_) => AccessibilityProvider()),
+        ChangeNotifierProvider(create: (_) => ProgressProvider()),
       ],
       child: GetMaterialApp(
         title: 'Smart Lecture Notes',

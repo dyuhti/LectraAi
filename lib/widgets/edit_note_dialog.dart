@@ -132,6 +132,7 @@ class _EditNoteDialogState extends State<EditNoteDialog> {
     final updatedNote = Note(
       id: widget.note.id,
       title: widget.note.title,
+      transcript: widget.note.transcript,
       content: widget.note.content,
       summary: _summaryController.text,
       cleanedText: widget.note.cleanedText,

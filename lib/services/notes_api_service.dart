@@ -47,26 +47,41 @@ class NotesApiService {
 
   Future<Note> createNote(Note note) async {
     final token = await _requireToken();
-    final payload = _normalizeCreatePayload(note);
+    
+    final payload = {
+      'userId': note.userId,
+      'title': _truncate(note.title, 140),
+      'transcript': _truncate(note.transcript, 50000),
+      'summary': _truncate(note.summary, 2400),
+      'fileUrl': note.fileUrl,
+    };
+
+    print('[NotesApiService] Sending POST /api/notes/save for userId: ${payload['userId']}');
     final response = await _client
         .post(
-          Uri.parse('$_baseUrl/api/notes'),
+          Uri.parse('$_baseUrl/api/notes/save'),
           headers: _headers(token),
           body: jsonEncode(payload),
         )
         .timeout(const Duration(seconds: 15));
+    
+    print('[NotesApiService] Response status: ${response.statusCode}');
 
     if (response.statusCode == 413) {
       throw Exception('Note is too large to save. Please shorten the transcript and try again.');
     }
 
-    if (response.statusCode != 201) {
+    if (response.statusCode != 201 && response.statusCode != 200) {
       throw Exception(_extractError(response.body, 'Failed to save note'));
     }
 
     final decoded = _decodeJson(response.body);
     if (decoded is! Map<String, dynamic>) {
       throw Exception('Invalid note response');
+    }
+
+    if (decoded.containsKey('data')) {
+      return Note.fromJson(decoded['data']);
     }
 
     return Note.fromJson(decoded);
@@ -89,6 +104,10 @@ class NotesApiService {
     final decoded = _decodeJson(response.body);
     if (decoded is! Map<String, dynamic>) {
       throw Exception('Invalid note response');
+    }
+
+    if (decoded.containsKey('data')) {
+      return Note.fromJson(decoded['data']);
     }
 
     return Note.fromJson(decoded);
@@ -116,10 +135,6 @@ class NotesApiService {
   }) async {
     try {
       print('[FEEDBACK] Submitting feedback to: $_baseUrl/feedback');
-      print('[FEEDBACK] Name: ${name ?? "Not provided"}');
-      print('[FEEDBACK] Email: ${email ?? "Not provided"}');
-      print('[FEEDBACK] Feedback length: ${feedback.length} characters');
-
       final response = await _client
           .post(
             Uri.parse('$_baseUrl/feedback'),
@@ -133,18 +148,10 @@ class NotesApiService {
           )
           .timeout(const Duration(seconds: 15));
 
-      print('[FEEDBACK] Response status: ${response.statusCode}');
-      print('[FEEDBACK] Response body: ${response.body}');
-
       if (response.statusCode != 200) {
-        final errorMsg = _extractError(response.body, 'Failed to submit feedback');
-        print('[FEEDBACK] ERROR: $errorMsg');
-        throw Exception(errorMsg);
+        throw Exception(_extractError(response.body, 'Failed to submit feedback'));
       }
-
-      print('[FEEDBACK] SUCCESS: Feedback submitted successfully');
     } catch (e) {
-      print('[FEEDBACK] EXCEPTION: $e');
       rethrow;
     }
   }
@@ -175,26 +182,12 @@ class NotesApiService {
   String _extractError(String body, String fallback) {
     final decoded = _decodeJson(body);
     if (decoded is Map<String, dynamic>) {
-      final message = decoded['msg'] ?? decoded['error'];
+      final message = decoded['message'] ?? decoded['msg'] ?? decoded['error'];
       if (message is String && message.trim().isNotEmpty) {
         return message;
       }
     }
     return fallback;
-  }
-
-  Map<String, dynamic> _normalizeCreatePayload(Note note) {
-    final raw = note.toJson();
-    return {
-      ...raw,
-      'title': _truncate(raw['title']?.toString() ?? '', 140),
-      'summary': _truncate(raw['summary']?.toString() ?? '', 2400),
-      'content': _truncate(raw['content']?.toString() ?? '', 50000),
-      'cleanedText': _truncate(raw['cleanedText']?.toString() ?? '', 50000),
-      'keyPoints': _limitStringList(raw['keyPoints'], maxItems: 20, maxChars: 300),
-      'formulas': _limitStringList(raw['formulas'], maxItems: 20, maxChars: 220),
-      'examples': _limitStringList(raw['examples'], maxItems: 20, maxChars: 300),
-    };
   }
 
   String _truncate(String value, int maxChars) {

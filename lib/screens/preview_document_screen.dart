@@ -5,6 +5,8 @@ import 'package:smart_lecture_notes/models/note.dart';
 import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
 import 'package:smart_lecture_notes/providers/document_provider.dart';
 import 'package:smart_lecture_notes/providers/note_provider.dart';
+import 'package:smart_lecture_notes/providers/progress_provider.dart';
+import 'package:smart_lecture_notes/services/auth_service.dart';
 import 'package:smart_lecture_notes/routes/app_routes.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 import 'package:smart_lecture_notes/utils/tts_text_builder.dart';
@@ -271,8 +273,15 @@ class _PreviewDocumentScreenState extends State<PreviewDocumentScreen> {
                     return;
                   }
 
+                  final authService = AuthService();
+                  final userId = await authService.getUserId() ?? '';
+                  
+                  print('[DOCUMENT] Saving note for user: $userId');
+
                   final note = Note(
+                    userId: userId,
                     title: noteTitle,
+                    transcript: extractedText,
                     subject: 'Document',
                     content: noteContent,
                     summary: formattedSummary.isEmpty
@@ -286,6 +295,9 @@ class _PreviewDocumentScreenState extends State<PreviewDocumentScreen> {
                     await context.read<NoteProvider>().createNote(note);
                     if (!mounted) return;
                     await context.read<NoteProvider>().loadNotes();
+                    
+                    // Refresh daily progress counts
+                    context.read<ProgressProvider>().refreshProgress();
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Note saved successfully.'),

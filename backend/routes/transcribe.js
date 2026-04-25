@@ -34,6 +34,9 @@ async function transcribeWithGroq(filePath) {
 // POST /transcribe
 router.post('/transcribe', async (req, res) => {
   try {
+    const { userId } = req.body;
+    console.log('[TRANSCRIBE] Request received. User ID:', userId || 'None');
+
     // Check if file exists
     if (!req.files || !req.files.file) {
       return res.status(400).json({ error: 'No audio file provided' });
@@ -57,6 +60,13 @@ router.post('/transcribe', async (req, res) => {
     fs.unlink(tempPath, (err) => {
       if (err) console.error('Failed to delete temp file:', err);
     });
+
+    // Update daily progress if userId is provided
+    if (userId) {
+      const { updateDailyProgress } = require('../services/progressService');
+      await updateDailyProgress(userId, 'audio');
+      console.log(`[TRANSCRIBE] Audio progress updated for user ${userId}`);
+    }
 
     res.json({ text });
   } catch (error) {

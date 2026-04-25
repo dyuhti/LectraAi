@@ -12,6 +12,18 @@ app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 app.use(fileUpload({ limits: { fileSize: 50 * 1024 * 1024 } }));
 
+// Debug middleware to log all requests
+app.use((req, res, next) => {
+  console.log(`[REQUEST] ${req.method} ${req.url}`);
+  if (req.method === 'POST' || req.method === 'PUT') {
+    const bodyCopy = { ...req.body };
+    // Don't log large transcripts to keep console clean
+    if (bodyCopy.transcript) bodyCopy.transcript = bodyCopy.transcript.substring(0, 50) + '...';
+    console.log('  Body:', JSON.stringify(bodyCopy));
+  }
+  next();
+});
+
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
@@ -34,7 +46,7 @@ app.post('/feedback', (req, res) => {
     console.log(`  Feedback: ${feedback.substring(0, 100)}...`);
 
     // Return success response
-    res.status(200).json({ 
+    res.status(200).json({
       message: 'Feedback submitted successfully',
       feedbackId: Date.now().toString(),
     });
@@ -46,6 +58,11 @@ app.post('/feedback', (req, res) => {
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/notes', require('./routes/notes'));
+app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/progress', require('./routes/progress'));
+app.use('/api/audio', require('./routes/audio'));
+app.use('/api/quiz', require('./routes/quiz'));
+app.use('/api/reminders', require('./routes/reminders'));
 app.use('/transcribe', require('./routes/transcribe'));
 
 const port = process.env.PORT || 5000;
@@ -59,9 +76,10 @@ if (!mongoUri) {
 mongoose
   .connect(mongoUri)
   .then(() => {
-  app.listen(port, '0.0.0.0', () => {
-    console.log(`Server running on port ${port}`);
-  });
+    console.log('✅ MongoDB connected successfully');
+    app.listen(port, '0.0.0.0', () => {
+      console.log(`🚀 Server running on port ${port}`);
+    });
   })
   .catch((error) => {
     console.error('MongoDB connection error:', error);

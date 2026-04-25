@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/models/note.dart';
+import 'package:smart_lecture_notes/models/progress.dart';
 import 'package:smart_lecture_notes/providers/note_provider.dart';
+import 'package:smart_lecture_notes/providers/progress_provider.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 
 class StudyDashboardScreen extends StatefulWidget {
@@ -21,6 +23,7 @@ class _StudyDashboardScreenState extends State<StudyDashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<NoteProvider>().loadNotes();
+      context.read<ProgressProvider>().refreshProgress();
     });
   }
 
@@ -50,19 +53,37 @@ class _StudyDashboardScreenState extends State<StudyDashboardScreen> {
     return hours.toStringAsFixed(hours >= 10 ? 0 : 1);
   }
 
-  String _formatTodayProgress(List<Note> notes) {
-    final today = DateTime.now();
-    final todayCount = notes.where((note) {
-      return note.createdAt.year == today.year &&
-          note.createdAt.month == today.month &&
-          note.createdAt.day == today.day;
-    }).length;
+  String _formatTodayProgress(DailyProgress progress) {
+    final todayCount = progress.notesCreated;
 
     if (todayCount == 0) {
       return 'No notes created today';
     }
 
     return '$todayCount note${todayCount == 1 ? '' : 's'} created today';
+  }
+
+  List<double> _buildWeeklyDataFromHistory(List<DailyProgress> history) {
+    final values = List<double>.filled(7, 0);
+    final today = DateTime.now();
+
+    // Map history to the last 7 days
+    for (int i = 0; i < 7; i++) {
+      final date = today.subtract(Duration(days: i));
+      final dateStr =
+          "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+
+      final record = history.firstWhere(
+        (h) => h.date == dateStr,
+        orElse: () => DailyProgress.empty(),
+      );
+
+      // Map back to Mon-Sun index (0-6)
+      final dayIndex = (date.weekday - 1) % 7;
+      values[dayIndex] = record.notesCreated.toDouble();
+    }
+
+    return values;
   }
 
   @override
@@ -86,40 +107,30 @@ class _StudyDashboardScreenState extends State<StudyDashboardScreen> {
         ),
         centerTitle: false,
       ),
-      body: Consumer<NoteProvider>(
-        builder: (context, noteProvider, _) {
-          if (noteProvider.isLoading && noteProvider.notes.isEmpty) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            );
-          }
+      body: Consumer2<NoteProvider, ProgressProvider>(
+        builder: (context, noteProvider, progressProvider, _) {
+              if (progressProvider.isLoading && noteProvider.notes.isEmpty) {
+                return const Center(
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                );
+              }
 
-          if (noteProvider.error != null && noteProvider.notes.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  noteProvider.error!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 14,
-                    height: 1.5,
-                  ),
-                ),
-              ),
-            );
-          }
+              final notes = noteProvider.notes;
+              final progress = progressProvider.progress;
+              final history = progressProvider.history;
 
-          final notes = noteProvider.notes;
-          final weeklyData = _buildWeeklyData(notes);
-          final totalNotes = notes.length;
-          final studyHours = _formatStudyHours(notes);
-          final todayStatus = _formatTodayProgress(notes);
-          final maxValue = weeklyData.fold<double>(0, (max, value) => value > max ? value : max);
+              final weeklyData = _buildWeeklyDataFromHistory(history);
+              final totalNotes = notes.length;
+              final studyHours = _formatStudyHours(notes);
+              final todayStatus = _formatTodayProgress(progress);
+              final maxValue = weeklyData.fold<double>(
+                  0, (max, value) => value > max ? value : max);
 
           return RefreshIndicator(
-            onRefresh: () => context.read<NoteProvider>().loadNotes(),
+            onRefresh: () async {
+              await noteProvider.loadNotes();
+              await progressProvider.refreshProgress();
+            },
             color: AppColors.primary,
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),

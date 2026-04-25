@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/routes/app_routes.dart';
 import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
+import 'package:smart_lecture_notes/providers/document_provider.dart';
+import 'package:smart_lecture_notes/providers/progress_provider.dart';
+import 'package:smart_lecture_notes/providers/quiz_provider.dart';
 import 'package:smart_lecture_notes/utils/tts_text_builder.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -160,9 +163,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       );
     }
 
+    final progress = context.read<ProgressProvider>().progress;
+    final progressText = 'Today study progress includes ${progress.notesCreated} notes created, '
+        '${progress.audioRecorded} audio recorded, and ${progress.quizzesGenerated} quiz generated.';
+
     return buildStructuredText(
       title: 'Smart Notes home',
-      content: 'Your AI-powered lecture companion. Capture and create notes. View notes. Today study progress includes three notes created, four audio recorded, and one quiz generated.',
+      content: 'Your AI-powered lecture companion. Capture and create notes. View notes. $progressText',
       keyPoints: const [
         'Capture and create notes',
         'View notes',
@@ -1051,14 +1058,37 @@ class _TodayProgressCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          const Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _StatChip(icon: Icons.note_alt_outlined, text: '3 notes created'),
-                  _StatChip(icon: Icons.mic_none, text: '4 audio recorded'),
-              _StatChip(icon: Icons.quiz_outlined, text: '1 quiz generated'),
-            ],
+          Consumer<ProgressProvider>(
+            builder: (context, progressProvider, _) {
+              final progress = progressProvider.progress;
+              if (progressProvider.isLoading) {
+                return const Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                );
+              }
+              return Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _StatChip(
+                    icon: Icons.note_alt_outlined,
+                    text: '${progress.notesCreated} notes created',
+                  ),
+                  _StatChip(
+                    icon: Icons.mic_none,
+                    text: '${progress.audioRecorded} audio recorded',
+                  ),
+                  _StatChip(
+                    icon: Icons.quiz_outlined,
+                    text: '${progress.quizzesGenerated} quiz generated',
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),

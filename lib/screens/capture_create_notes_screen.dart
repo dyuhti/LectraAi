@@ -3,6 +3,10 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:provider/provider.dart';
+import 'package:smart_lecture_notes/providers/document_provider.dart';
+import 'package:smart_lecture_notes/providers/progress_provider.dart';
+import 'package:smart_lecture_notes/providers/quiz_provider.dart';
 import 'package:smart_lecture_notes/routes/app_routes.dart';
 import 'package:smart_lecture_notes/screens/preview_text_screen.dart';
 import 'package:smart_lecture_notes/services/ai_service.dart';
@@ -306,17 +310,7 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
         ),
       ),
 
-      const SizedBox(height: 16),
-      const _FadeInOnBuild(
-        delay: Duration(milliseconds: 240),
-        child: _ProgressDashboardCard(
-          radius: _radius,
-          navy: _navy,
-          royal: _royal,
-        ),
-      ),
-
-      const SizedBox(height: 32),
+      const SizedBox(height: 24),
     ];
 
     return Scaffold(
@@ -1616,38 +1610,44 @@ class _ProgressChipsRow extends StatelessWidget {
     const royal = _CaptureCreateNotesScreenState._royal;
     const subtitle = _CaptureCreateNotesScreenState._subtitle;
 
-    return const SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          _MinProgressChip(
-            icon: Icons.note_alt_outlined,
-            value: '3',
-            label: 'notes created',
-            navy: navy,
-            royal: royal,
-            subtitle: subtitle,
+    return Consumer<ProgressProvider>(
+      builder: (context, progressProvider, _) {
+        final progress = progressProvider.progress;
+        
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _MinProgressChip(
+                icon: Icons.note_alt_outlined,
+                value: progress.notesCreated.toString(),
+                label: 'notes created',
+                navy: navy,
+                royal: royal,
+                subtitle: subtitle,
+              ),
+              const SizedBox(width: 12),
+              _MinProgressChip(
+                icon: Icons.mic_none,
+                value: progress.audioRecorded.toString(),
+                label: 'audio recorded',
+                navy: navy,
+                royal: royal,
+                subtitle: subtitle,
+              ),
+              const SizedBox(width: 12),
+              _MinProgressChip(
+                icon: Icons.quiz_outlined,
+                value: progress.quizzesGenerated.toString(),
+                label: 'quizzes generated',
+                navy: navy,
+                royal: royal,
+                subtitle: subtitle,
+              ),
+            ],
           ),
-          SizedBox(width: 12),
-          _MinProgressChip(
-            icon: Icons.mic_none,
-            value: '4',
-            label: 'audio recorded',
-            navy: navy,
-            royal: royal,
-            subtitle: subtitle,
-          ),
-          SizedBox(width: 12),
-          _MinProgressChip(
-            icon: Icons.quiz_outlined,
-            value: '8',
-            label: 'quizzes generated',
-            navy: navy,
-            royal: royal,
-            subtitle: subtitle,
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

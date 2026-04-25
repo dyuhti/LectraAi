@@ -12,12 +12,7 @@ const NoteSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    subject: {
-      type: String,
-      default: 'Document',
-      trim: true,
-    },
-    content: {
+    transcript: {
       type: String,
       default: '',
     },
@@ -25,21 +20,9 @@ const NoteSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
-    cleanedText: {
+    fileUrl: {
       type: String,
       default: '',
-    },
-    keyPoints: {
-      type: [String],
-      default: [],
-    },
-    formulas: {
-      type: [String],
-      default: [],
-    },
-    examples: {
-      type: [String],
-      default: [],
     },
     createdAt: {
       type: Date,

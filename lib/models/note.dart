@@ -1,23 +1,29 @@
 class Note {
   final String id;
   final String title;
+  final String transcript;
+  final String summary;
+  final String fileUrl;
+  final DateTime createdAt;
+  final String userId;
   final String subject;
   final String content;
-  final String summary;
+  final String cleanedText;
   final List<String> keyPoints;
   final List<String> formulas;
   final List<String> examples;
-  final String cleanedText;
-  final DateTime createdAt;
 
   Note({
     this.id = '',
     required this.title,
-    required this.content,
+    required this.transcript,
     required this.summary,
-    required this.cleanedText,
-    this.subject = 'Document',
+    this.fileUrl = '',
     required this.createdAt,
+    this.userId = '',
+    this.subject = 'Document',
+    this.content = '',
+    this.cleanedText = '',
     this.keyPoints = const [],
     this.formulas = const [],
     this.examples = const [],
@@ -25,46 +31,32 @@ class Note {
 
   factory Note.fromJson(Map<String, dynamic> data) {
     final createdAt = _parseCreatedAt(data['createdAt']);
-
-    final cleanedText = (data['cleanedText'] ?? '').toString();
-    final summary = (data['summary'] ?? '').toString();
-    final content = (data['content'] ?? summary ?? cleanedText).toString();
-    final rawKeyPoints = _readStringList(data['keyPoints']);
-    final rawFormulas = _readStringList(data['formulas']);
-    final rawExamples = _readStringList(data['examples']);
-    final sourceText = _sourceText(summary, cleanedText, content);
-
+    
     return Note(
       id: (data['_id'] ?? data['id'] ?? '').toString(),
+      userId: (data['userId'] ?? '').toString(),
       title: (data['title'] ?? '').toString(),
-      summary: summary,
-      cleanedText: cleanedText,
-      content: content,
-      subject: (data['subject'] ?? 'Document').toString(),
+      transcript: (data['transcript'] ?? data['content'] ?? data['cleanedText'] ?? '').toString(),
+      summary: (data['summary'] ?? '').toString(),
+      fileUrl: (data['fileUrl'] ?? '').toString(),
       createdAt: createdAt,
-      keyPoints: rawKeyPoints.isEmpty
-          ? _extractKeyPoints(summary.isNotEmpty ? summary : sourceText)
-          : rawKeyPoints,
-      formulas: rawFormulas.isEmpty
-          ? _extractFormulas(sourceText)
-          : rawFormulas,
-      examples: rawExamples.isEmpty
-          ? _extractExamples(sourceText)
-          : rawExamples,
+      subject: (data['subject'] ?? 'Document').toString(),
+      content: (data['content'] ?? '').toString(),
+      cleanedText: (data['cleanedText'] ?? '').toString(),
+      keyPoints: _readStringList(data['keyPoints']),
+      formulas: _readStringList(data['formulas']),
+      examples: _readStringList(data['examples']),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'userId': userId,
       'title': title,
+      'transcript': transcript,
       'summary': summary,
-      'keyPoints': keyPoints,
-      'formulas': formulas,
-      'examples': examples,
-      'subject': subject,
-      'content': content,
-      'cleanedText': cleanedText,
+      'fileUrl': fileUrl,
       'createdAt': createdAt.toIso8601String(),
     };
   }
@@ -84,6 +76,7 @@ class Note {
     return Note(
       id: id,
       title: title,
+      transcript: transcript,
       subject: subject,
       content: content,
       summary: summary,

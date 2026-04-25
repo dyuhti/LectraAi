@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:smart_lecture_notes/providers/progress_provider.dart';
 import 'package:smart_lecture_notes/providers/quiz_provider.dart';
 import 'package:smart_lecture_notes/routes/app_routes.dart';
 
@@ -127,6 +128,11 @@ class _GenerateQuizScreenState extends State<GenerateQuizScreen> {
       _showSnackBar(provider.errorMessage ?? 'Quiz generated (offline mode)');
     } else {
       print('[GenerateQuizScreen] Generation completed successfully!');
+      // Increment quiz progress
+      if (mounted) {
+        context.read<ProgressProvider>().incrementQuiz();
+        print('[GenerateQuizScreen] Quiz progress incremented');
+      }
     }
 
     Navigator.of(context).pushNamed(AppRoutes.practiceQuiz);
