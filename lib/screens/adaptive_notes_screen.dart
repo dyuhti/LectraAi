@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
 import 'package:smart_lecture_notes/models/note.dart';
 import 'package:smart_lecture_notes/providers/note_provider.dart';
+import 'package:smart_lecture_notes/routes/app_routes.dart';
 import 'package:smart_lecture_notes/services/ai_service.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
+import 'package:smart_lecture_notes/widgets/tts_control_widget.dart';
 
 class AdaptiveNotesScreen extends StatefulWidget {
   const AdaptiveNotesScreen({Key? key}) : super(key: key);
@@ -54,6 +57,33 @@ class _AdaptiveNotesScreenState extends State<AdaptiveNotesScreen> {
     }
   }
 
+  String _buildTtsText() {
+    final result = _result;
+    if (result == null) {
+      return '';
+    }
+
+    final title = result['title']?.toString().trim() ?? '';
+    final content = result['content']?.toString().trim() ?? '';
+    final keyPoints = List<String>.from(result['key_points'] ?? const <String>[])
+        .map((point) => point.trim())
+        .where((point) => point.isNotEmpty)
+        .toList();
+
+    final buffer = StringBuffer();
+    if (title.isNotEmpty) {
+      buffer.write('Title. $title. ');
+    }
+    if (content.isNotEmpty) {
+      buffer.write('Explanation. $content. ');
+    }
+    for (var index = 0; index < keyPoints.length; index++) {
+      buffer.write('Point ${index + 1}. ${keyPoints[index]}. ');
+    }
+
+    return buffer.toString().trim();
+  }
+
   void _selectMode(String mode) {
     setState(() {
       _selectedMode = mode;
@@ -94,6 +124,8 @@ class _AdaptiveNotesScreenState extends State<AdaptiveNotesScreen> {
   @override
   Widget build(BuildContext context) {
     final notes = context.watch<NoteProvider>().notes;
+    final isAccessibilityEnabled = context.watch<AccessibilityProvider>().isEnabled;
+    final ttsText = _buildTtsText();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -108,6 +140,23 @@ class _AdaptiveNotesScreenState extends State<AdaptiveNotesScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.primaryDark),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Material(
+              color: AppColors.primary.withOpacity(0.08),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: IconButton(
+                onPressed: () => Navigator.of(context).pushNamed(AppRoutes.settings),
+                icon: const Icon(Icons.settings_outlined),
+                color: AppColors.primaryDark,
+                tooltip: 'Settings',
+              ),
+            ),
+          ),
+        ],
       ),
       body: SafeArea(
         child: Column(
@@ -165,11 +214,6 @@ class _AdaptiveNotesScreenState extends State<AdaptiveNotesScreen> {
                     mode: 'panic',
                     label: 'Panic',
                     icon: Icons.timer_rounded,
-                  ),
-                  _buildModeChip(
-                    mode: 'accessible',
-                    label: 'Accessible',
-                    icon: Icons.accessibility_new_rounded,
                   ),
                 ],
               ),
@@ -251,6 +295,11 @@ class _AdaptiveNotesScreenState extends State<AdaptiveNotesScreen> {
                 },
               ),
             ),
+            if (isAccessibilityEnabled && ttsText.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: TtsControlWidget(text: ttsText),
+              ),
           ],
         ),
       ),

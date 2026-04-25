@@ -3,13 +3,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:smart_lecture_notes/routes/page_transitions.dart';
-import 'package:smart_lecture_notes/screens/preview_text_screen.dart';
 import 'package:smart_lecture_notes/routes/app_routes.dart';
 import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
-import 'package:smart_lecture_notes/services/api_service.dart';
-import 'package:smart_lecture_notes/services/ocr_service.dart';
-import 'package:smart_lecture_notes/services/ai_service.dart';
 import 'package:smart_lecture_notes/utils/tts_text_builder.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -31,9 +26,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   late final AnimationController _ambient;
   late final AnimationController _shimmer;
-  final TranscriptionApiService _apiService = TranscriptionApiService();
-
-  bool _isScanning = false;
   String _selectedText = '';
 
   @override
@@ -56,7 +48,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void dispose() {
     _ambient.dispose();
     _shimmer.dispose();
-    _apiService.dispose();
     super.dispose();
   }
 
@@ -122,16 +113,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   .pushNamed(AppRoutes.captureNotes),
                             ),
                           ),
-                          const SizedBox(height: 22),
-                          _FadeInOnBuild(
-                            delay: const Duration(milliseconds: 130),
-                            child: _QuickCaptureHorizontalCard(
-                              navy: _navy,
-                              royal: _royal,
-                              radius: _radius,
-                              onTap: _handleQuickCaptureTap,
-                            ),
-                          ),
                           const SizedBox(height: 16),
                           _FadeInOnBuild(
                             delay: const Duration(milliseconds: 200),
@@ -160,70 +141,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ),
           ),
-          if (_isScanning)
-            const Positioned.fill(
-              child: _ScanningOverlay(message: 'Scanning notes...'),
-            ),
         ],
       ),
     );
-  }
-
-  Future<void> _handleQuickCaptureTap() async {
-    if (_isScanning) return;
-
-    setState(() => _isScanning = true);
-    final ocrService = OcrService();
-
-    try {
-      final ocrResult = await ocrService.captureAndExtractTextFromCamera();
-      if (!mounted || ocrResult == null) return;
-
-      final cleanedText = await _extractTextFromImage(ocrResult);
-
-      final aiService = AiService();
-      final aiResult = await aiService.generateNotes(cleanedText, 'exam');
-
-      if (!mounted) return;
-
-      Navigator.of(context).push(
-        AppPageTransitions.fadeSlide(
-          PreviewTextScreen(
-            originalText: cleanedText,
-            title: aiResult['title']?.toString() ?? 'Generated Notes',
-            content: aiResult['content']?.toString() ?? '',
-            keyPoints: List<String>.from(aiResult['key_points'] ?? []),
-          ),
-        ),
-      );
-    } catch (error) {
-      debugPrint('[OCR] Quick Capture failed: $error');
-      _showSnackbar('No text found. Try again.');
-    } finally {
-      ocrService.dispose();
-      if (mounted) {
-        setState(() => _isScanning = false);
-      }
-    }
-  }
-
-  Future<String> _extractTextFromImage(OcrScanResult capturedImage) async {
-    try {
-      final response = await _apiService.processImage(
-        imageBase64: capturedImage.imageBase64,
-      );
-      final text = (response['text'] ?? '').toString().trim();
-      if (text.isNotEmpty) {
-        return text;
-      }
-    } catch (e) {
-      debugPrint('[VISION] Quick Capture vision failed: $e');
-      if (mounted) {
-        _showSnackbar('Vision failed. You can retry in preview.');
-      }
-    }
-
-    return 'Unable to read text right now. Tap Retry Vision in preview.';
   }
 
 
@@ -242,11 +162,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     return buildStructuredText(
       title: 'Smart Notes home',
-      content: 'Your AI-powered lecture companion. Capture and create notes. Quick capture. View notes. Today study progress includes three notes created, two images captured, and one quiz generated.',
+      content: 'Your AI-powered lecture companion. Capture and create notes. View notes. Today study progress includes three notes created, four audio recorded, and one quiz generated.',
       keyPoints: const [
         'Capture and create notes',
-        'Quick capture',
         'View notes',
+        'Today study progress',
       ],
     );
   }
@@ -258,11 +178,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
   }
 
-  void _showSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
 }
 
 class _AccessibilityToggleCard extends StatelessWidget {
@@ -324,19 +239,8 @@ class _AccessibilityToggleCard extends StatelessWidget {
                   'Accessibility Mode (Text-to-Speech)',
                   style: TextStyle(
                     color: _HomeScreenState._navy,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  hasSelection
-                      ? 'Selected text is ready to read'
-                      : 'Select text, or press play to read this page',
-                  style: const TextStyle(
-                    color: _HomeScreenState._subtle,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
@@ -863,180 +767,6 @@ class _CtaChipButton extends StatelessWidget {
   }
 }
 
-class _QuickCaptureHorizontalCard extends StatelessWidget {
-  const _QuickCaptureHorizontalCard({
-    required this.navy,
-    required this.royal,
-    required this.radius,
-    required this.onTap,
-  });
-
-  final Color navy;
-  final Color royal;
-  final double radius;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final decoration = BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(radius),
-      border: Border.all(color: navy.withOpacity(0.07), width: 1),
-      boxShadow: [
-        BoxShadow(
-          color: royal.withOpacity(0.10),
-          blurRadius: 22,
-          offset: const Offset(0, 14),
-        ),
-      ],
-    );
-
-    return SizedBox(
-      height: 132,
-      child: _PressableSurface(
-        onTap: onTap,
-        borderRadius: radius,
-        decoration: decoration,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              _CameraThumbnail(royal: royal, navy: navy),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Quick Capture',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: navy,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'Snap the board. We convert it to clean notes.',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: _HomeScreenState._subtle,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        height: 1.25,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: royal.withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: navy.withOpacity(0.06), width: 1),
-                ),
-                child: Icon(
-                  Icons.arrow_forward_rounded,
-                  size: 20,
-                  color: navy,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CameraThumbnail extends StatelessWidget {
-  const _CameraThumbnail({required this.royal, required this.navy});
-
-  final Color royal;
-  final Color navy;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 96,
-      height: 96,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [royal.withOpacity(0.20), royal.withOpacity(0.05)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: navy.withOpacity(0.08), width: 1),
-      ),
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _PreviewLine(widthFactor: 1, royal: royal),
-                  const SizedBox(height: 10),
-                  _PreviewLine(widthFactor: 0.85, royal: royal),
-                  const SizedBox(height: 10),
-                  _PreviewLine(widthFactor: 0.70, royal: royal),
-                ],
-              ),
-            ),
-          ),
-          Align(
-            alignment: Alignment.bottomRight,
-            child: Container(
-              margin: const EdgeInsets.all(10),
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.70),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                Icons.camera_alt,
-                size: 18,
-                color: royal,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PreviewLine extends StatelessWidget {
-  const _PreviewLine({required this.widthFactor, required this.royal});
-
-  final double widthFactor;
-  final Color royal;
-
-  @override
-  Widget build(BuildContext context) {
-    return FractionallySizedBox(
-      widthFactor: widthFactor,
-      child: Container(
-        height: 10,
-        decoration: BoxDecoration(
-          color: royal.withOpacity(0.16),
-          borderRadius: BorderRadius.circular(6),
-        ),
-      ),
-    );
-  }
-}
-
 class _ViewNotesLayeredCard extends StatelessWidget {
   const _ViewNotesLayeredCard({
     required this.navy,
@@ -1326,7 +1056,7 @@ class _TodayProgressCard extends StatelessWidget {
             runSpacing: 10,
             children: [
               _StatChip(icon: Icons.note_alt_outlined, text: '3 notes created'),
-              _StatChip(icon: Icons.camera_alt_outlined, text: '2 images captured'),
+                  _StatChip(icon: Icons.mic_none, text: '4 audio recorded'),
               _StatChip(icon: Icons.quiz_outlined, text: '1 quiz generated'),
             ],
           ),

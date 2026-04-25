@@ -255,8 +255,7 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
         child: _ProgressChipsRow(),
       ),
 
-      const SizedBox(height: 24),
-      const _SectionLabel(title: 'Capture'),
+      const SizedBox(height: 18),
       _FadeInOnBuild(
         delay: const Duration(milliseconds: 40),
         child: SizedBox(
@@ -273,8 +272,7 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
       ),
 
       const SizedBox(height: 18),
-      const _FlowHintRow(),
-      const SizedBox(height: 14),
+      const SizedBox(height: 8),
 
       _MosaicFeatureGrid(
         radius: _radius,
@@ -291,7 +289,6 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
       ),
 
       const SizedBox(height: 18),
-      const _SectionLabel(title: 'Insights'),
       _FadeInOnBuild(
         delay: const Duration(milliseconds: 180),
         child: _FeatureCard(
@@ -342,7 +339,7 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
               child: Material(
                 color: Colors.transparent,
                 child: Text(
-                  'Capture & Create Notes',
+                  'Adaptive Notes',
                   style: TextStyle(
                     color: _navy,
                     fontSize: 20,
@@ -365,6 +362,22 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
           ],
         ),
         centerTitle: false,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Material(
+              color: _navy.withOpacity(0.08),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: IconButton(
+                onPressed: () => Navigator.of(context).pushNamed(AppRoutes.settings),
+                icon: const Icon(Icons.settings_outlined, color: _navy),
+                tooltip: 'Settings',
+              ),
+            ),
+          ),
+        ],
       ),
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
@@ -392,98 +405,6 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
       MaterialPageRoute(
         builder: (_) => const AdaptiveNotesScreen(),
       ),
-    );
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14, top: 4),
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: _CaptureCreateNotesScreenState._royal,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Text(
-            title,
-            style: const TextStyle(
-              color: _CaptureCreateNotesScreenState._navy,
-              fontSize: 13,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0.3,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FlowHintRow extends StatelessWidget {
-  const _FlowHintRow();
-
-  @override
-  Widget build(BuildContext context) {
-    const color = _CaptureCreateNotesScreenState._subtitle;
-
-    Widget step(String text) {
-      return Text(
-        text,
-        style: const TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.2,
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              step('Capture'),
-              const SizedBox(width: 10),
-              const Icon(Icons.chevron_right, size: 16, color: color),
-              const SizedBox(width: 10),
-              step('Process'),
-              const SizedBox(width: 10),
-              const Icon(Icons.chevron_right, size: 16, color: color),
-              const SizedBox(width: 10),
-              step('Practice'),
-              const SizedBox(width: 10),
-              const Icon(Icons.chevron_right, size: 16, color: color),
-              const SizedBox(width: 10),
-              step('Insights'),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-        const Text(
-          'Tips: Hold phone straight, keep text horizontal, use good lighting, avoid shadows.',
-          style: TextStyle(
-            color: color,
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            height: 1.3,
-          ),
-        ),
-      ],
     );
   }
 }
@@ -765,7 +686,7 @@ class _HeroCaptureCardState extends State<_HeroCaptureCard>
                             );
                           },
                           child: const Icon(
-                            Icons.camera_alt_outlined,
+                            Icons.auto_awesome_rounded,
                             color: Colors.white,
                             size: 26,
                           ),
@@ -1706,9 +1627,9 @@ class _ProgressChipsRow extends StatelessWidget {
       child: Row(
         children: [
           _MinProgressChip(
-            icon: Icons.image_outlined,
-            value: '12',
-            label: 'images captured',
+            icon: Icons.note_alt_outlined,
+            value: '3',
+            label: 'notes created',
             navy: navy,
             royal: royal,
             subtitle: subtitle,
