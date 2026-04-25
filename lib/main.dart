@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/routes/app_routes.dart';
 import 'package:smart_lecture_notes/routes/route_generator.dart';
+import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
 import 'package:smart_lecture_notes/providers/quiz_provider.dart';
 import 'package:smart_lecture_notes/providers/note_provider.dart';
 import 'package:smart_lecture_notes/providers/document_provider.dart';
@@ -34,13 +35,13 @@ class _MissingGroqKeyApp extends StatelessWidget {
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
-        backgroundColor: Colors.red,
+        backgroundColor: Color(0xFFF3F4F6),
         body: Center(
           child: Text(
             'Groq key missing in launch.json',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.white,
+              color: Color(0xFF374151),
               fontSize: 18,
               fontWeight: FontWeight.w700,
             ),
@@ -61,11 +62,11 @@ class SmartLectureNotesApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => QuizProvider()),
         ChangeNotifierProvider(create: (_) => NoteProvider()),
         ChangeNotifierProvider(create: (_) => DocumentProvider()),
+        ChangeNotifierProvider(create: (_) => AccessibilityProvider()),
       ],
       child: GetMaterialApp(
         title: 'Smart Lecture Notes',
         debugShowCheckedModeBanner: false,
-
         // Theme Configuration
         theme: ThemeData(
           useMaterial3: true,

@@ -11,6 +11,7 @@ class TtsService {
   String voiceGender = 'female';
 
   VoidCallback? onPlayingChanged;
+  ValueChanged<String>? onVoiceWarning;
 
   Future<void> initialize({VoidCallback? onStateChanged}) async {
     onPlayingChanged = onStateChanged;
@@ -43,30 +44,58 @@ class TtsService {
     await _tts.setLanguage('en-US');
     try {
       final voices = await _tts.getVoices;
+      debugPrint('ALL VOICES: $voices');
       if (voices == null) return;
 
-      final voiceList = List<Map<Object?, Object?>>.from(voices);
+      final voiceList = (voices as Iterable)
+          .whereType<Map>()
+          .map((voice) => Map<String, dynamic>.from(voice.cast()))
+          .toList();
 
       // Filter to en-US voices only
-      final enVoices = voiceList.where((v) {
-        final locale = v['locale']?.toString().toLowerCase() ?? '';
+      final enVoices = voiceList.where((voice) {
+        final locale = voice['locale']?.toString().toLowerCase() ?? '';
         return locale.contains('en') && locale.contains('us');
       }).toList();
 
-      Map<Object?, Object?>? chosen;
+      Map<String, dynamic>? chosen;
 
-      for (final v in enVoices) {
-        final name = v['name']?.toString().toLowerCase() ?? '';
-        if (voiceGender == 'male' &&
-            (name.contains('male') || name.contains('guy') || name.contains('david'))) {
-          chosen = v;
-          break;
+      bool isMaleVoiceName(String name) {
+        final normalizedName = name.toLowerCase();
+        return normalizedName.contains('david') ||
+            normalizedName.contains('mark') ||
+            normalizedName.contains('alex') ||
+            normalizedName.contains('male');
+      }
+
+      bool isFemaleVoiceName(String name) {
+        final normalizedName = name.toLowerCase();
+        return normalizedName.contains('female') ||
+            normalizedName.contains('woman') ||
+            normalizedName.contains('zira') ||
+            normalizedName.contains('samantha');
+      }
+
+      if (voiceGender == 'male') {
+        for (final voice in enVoices) {
+          final name = voice['name']?.toString() ?? '';
+          if (isMaleVoiceName(name)) {
+            chosen = voice;
+            break;
+          }
         }
-        if (voiceGender == 'female' &&
-            (name.contains('female') || name.contains('woman') ||
-                name.contains('zira') || name.contains('samantha'))) {
-          chosen = v;
-          break;
+
+        if (chosen == null) {
+          onVoiceWarning?.call('Male voice not available on this device');
+          chosen = enVoices.isNotEmpty ? enVoices.first : null;
+        }
+      } else {
+        for (final voice in enVoices) {
+          final name = voice['name']?.toString() ?? '';
+          if (isFemaleVoiceName(name)) {
+            chosen = voice;
+            break;
+          }
         }
       }
 
@@ -74,6 +103,7 @@ class TtsService {
       chosen ??= enVoices.isNotEmpty ? enVoices.first : null;
 
       if (chosen != null) {
+        debugPrint('SELECTED VOICE: ${chosen['name']}');
         await _tts.setVoice({
           'name': chosen['name']?.toString() ?? '',
           'locale': chosen['locale']?.toString() ?? 'en-US',

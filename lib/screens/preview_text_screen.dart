@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 import 'package:smart_lecture_notes/services/ai_service.dart';
-import 'package:smart_lecture_notes/widgets/tts_control_widget.dart';
+import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
 
 class PreviewTextScreen extends StatefulWidget {
   final String originalText;
@@ -28,7 +29,6 @@ class _PreviewTextScreenState extends State<PreviewTextScreen> {
   
   String _selectedMode = 'exam';
   bool _isLoading = false;
-  bool _accessibilityMode = false;
   
   final AiService _aiService = AiService();
 
@@ -43,17 +43,14 @@ class _PreviewTextScreenState extends State<PreviewTextScreen> {
     Future.microtask(() => _applyMode());
   }
 
-  // Determines the correct mode to use (accessibility overrides selection)
-  String get _effectiveMode => _accessibilityMode ? 'accessible' : _selectedMode;
-
   // Build the text string for TTS
   String get _ttsText => '$_title. $_content. ${_keyPoints.join('. ')}';
 
-  // Fetches notes using the current effective mode (respects accessibility override)
+  // Fetches notes using the current selected mode.
   Future<void> _applyMode() async {
     if (_isLoading) return;
 
-    final modeToUse = _effectiveMode;
+    final modeToUse = _selectedMode;
     debugPrint('[PreviewTextScreen] MODE USED: $modeToUse');
 
     setState(() => _isLoading = true);
@@ -79,21 +76,12 @@ class _PreviewTextScreenState extends State<PreviewTextScreen> {
   }
 
   Widget _buildModeButton(String mode, String label, IconData icon) {
-    // A mode button is active when NOT in accessibility override AND this mode is selected
-    final isActive = !_accessibilityMode && _selectedMode == mode;
+    final isActive = _selectedMode == mode;
 
     return Expanded(
       child: GestureDetector(
         onTap: () {
-          if (_accessibilityMode) {
-            // Turn off accessibility mode and switch to this manual mode
-            setState(() {
-              _accessibilityMode = false;
-              _selectedMode = mode;
-            });
-          } else {
-            setState(() => _selectedMode = mode);
-          }
+          setState(() => _selectedMode = mode);
           _applyMode();
         },
         child: AnimatedContainer(
@@ -235,6 +223,9 @@ class _PreviewTextScreenState extends State<PreviewTextScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isAccessibilityEnabled = context.watch<AccessibilityProvider>().isEnabled;
+    _publishScreenText(getScreenText());
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -249,13 +240,14 @@ class _PreviewTextScreenState extends State<PreviewTextScreen> {
         actions: [
           Row(
             children: [
-              Icon(Icons.accessibility_new, size: 20, color: _accessibilityMode ? AppColors.primary : Colors.grey),
+              Icon(
+                Icons.accessibility_new,
+                size: 20,
+                color: isAccessibilityEnabled ? AppColors.primary : Colors.grey,
+              ),
               Switch(
-                value: _accessibilityMode,
-                onChanged: (val) async {
-                  setState(() => _accessibilityMode = val);
-                  await _applyMode();
-                },
+                value: isAccessibilityEnabled,
+                onChanged: (val) => context.read<AccessibilityProvider>().toggle(val),
                 activeColor: AppColors.primary,
               ),
             ],
@@ -327,9 +319,17 @@ class _PreviewTextScreenState extends State<PreviewTextScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _accessibilityMode
-          ? TtsControlWidget(text: _ttsText)
-          : null,
     );
+  }
+
+  String getScreenText() {
+    return '$_title $_content ${_keyPoints.join(' ')}';
+  }
+
+  void _publishScreenText(String text) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<AccessibilityProvider>().setScreenText(text);
+    });
   }
 }

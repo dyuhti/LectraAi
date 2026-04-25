@@ -4,6 +4,7 @@ import 'my_notes_screen.dart';
 import 'package:smart_lecture_notes/models/note.dart';
 import 'package:smart_lecture_notes/services/api_service.dart';
 import 'package:provider/provider.dart';
+import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
 import 'package:smart_lecture_notes/providers/note_provider.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 
@@ -66,7 +67,7 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
       Get.snackbar(
         'Error',
         'No AI notes to save',
-        backgroundColor: Colors.red.withValues(alpha: 0.8),
+        backgroundColor: AppColors.primaryDark,
         colorText: Colors.white,
         duration: const Duration(seconds: 2),
       );
@@ -127,7 +128,7 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
       Get.snackbar(
         'Success',
         'AI notes saved to your notes',
-        backgroundColor: Colors.green.withValues(alpha: 0.8),
+        backgroundColor: AppColors.primary,
         colorText: Colors.white,
         duration: const Duration(seconds: 2),
       );
@@ -146,7 +147,7 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
         Get.snackbar(
           'Error',
           'Failed to save note: $e',
-          backgroundColor: Colors.red.withValues(alpha: 0.8),
+          backgroundColor: AppColors.primaryDark,
           colorText: Colors.white,
           duration: const Duration(seconds: 2),
         );
@@ -167,6 +168,9 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
       widget.summary?['keyPoints'] ?? widget.summary?['key_points'],
     );
     final lectureTitle = _safeString(widget.summary?['lectureTitle']);
+    _publishScreenText(
+      getScreenText(summaryText, keyPoints, lectureTitle),
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -402,5 +406,25 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
         ),
       ),
     );
+  }
+
+  String getScreenText(
+    String summaryText,
+    List<String> keyPoints,
+    String lectureTitle,
+  ) {
+    return [
+      'AI notes screen.',
+      lectureTitle,
+      summaryText,
+      if (keyPoints.isNotEmpty) keyPoints.join(' '),
+    ].join(' ');
+  }
+
+  void _publishScreenText(String text) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<AccessibilityProvider>().setScreenText(text);
+    });
   }
 }

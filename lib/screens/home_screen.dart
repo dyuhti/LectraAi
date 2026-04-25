@@ -2,13 +2,14 @@ import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/routes/page_transitions.dart';
 import 'package:smart_lecture_notes/screens/preview_text_screen.dart';
 import 'package:smart_lecture_notes/routes/app_routes.dart';
+import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
 import 'package:smart_lecture_notes/services/api_service.dart';
 import 'package:smart_lecture_notes/services/ocr_service.dart';
 import 'package:smart_lecture_notes/services/ai_service.dart';
-import 'package:smart_lecture_notes/widgets/tts_control_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -32,7 +33,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final TranscriptionApiService _apiService = TranscriptionApiService();
 
   bool _isScanning = false;
-  bool _accessibilityModeEnabled = false;
   String _selectedText = '';
 
   @override
@@ -63,6 +63,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final padding = width < 380 ? 18.0 : 24.0;
+    final isAccessibilityEnabled = context.watch<AccessibilityProvider>().isEnabled;
+    _publishScreenText(_buildScreenText());
 
     return Scaffold(
       backgroundColor: _bg,
@@ -100,8 +102,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           ),
                           const SizedBox(height: 14),
                           _AccessibilityToggleCard(
-                            enabled: _accessibilityModeEnabled,
-                            onChanged: _onAccessibilityModeChanged,
+                            enabled: isAccessibilityEnabled,
+                            onChanged: (value) =>
+                                context.read<AccessibilityProvider>().toggle(value),
                             selectedText: _selectedText,
                           ),
                           const SizedBox(height: 18),
@@ -156,17 +159,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ),
           ),
-          if (_accessibilityModeEnabled)
-            Positioned(
-              right: 16,
-              left: 16,
-              bottom: 16,
-              child: TtsControlWidget(
-                text: _selectedText.isNotEmpty
-                    ? _selectedText
-                    : _buildMainContentSummary(),
-              ),
-            ),
           if (_isScanning)
             const Positioned.fill(
               child: _ScanningOverlay(message: 'Scanning notes...'),
@@ -233,18 +225,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return 'Unable to read text right now. Tap Retry Vision in preview.';
   }
 
-  void _onAccessibilityModeChanged(bool enabled) {
-    setState(() {
-      _accessibilityModeEnabled = enabled;
-    });
-  }
 
 
+  String getScreenText() => _buildScreenText();
 
-  String _buildMainContentSummary() {
+  String _buildScreenText() {
+    final selectedText = _selectedText.trim();
+    if (selectedText.isNotEmpty) {
+      return 'Smart Notes home. Selected text: $selectedText';
+    }
+
     return 'Smart Notes. Your AI-powered lecture companion. '
         'Capture and create notes. Quick capture. View notes. '
         'Today study progress includes three notes created, two images captured, and one quiz generated.';
+  }
+
+  void _publishScreenText(String text) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<AccessibilityProvider>().setScreenText(text);
+    });
   }
 
   void _showSnackbar(String message) {

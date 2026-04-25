@@ -688,7 +688,7 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
       Get.snackbar(
         'No Options Selected',
         'Please enable at least one processing option (AI Text Extraction, Auto Summarize, or Keyword Extraction)',
-        backgroundColor: Colors.orange,
+        backgroundColor: AppColors.primaryLight,
         colorText: Colors.white,
         duration: const Duration(seconds: 3),
       );

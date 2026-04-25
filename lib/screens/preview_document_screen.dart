@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/models/note.dart';
+import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
 import 'package:smart_lecture_notes/providers/document_provider.dart';
 import 'package:smart_lecture_notes/screens/my_notes_screen.dart';
 import 'package:smart_lecture_notes/providers/note_provider.dart';
@@ -127,6 +128,9 @@ class _PreviewDocumentScreenState extends State<PreviewDocumentScreen> {
       doi: doi,
       abstractText: abstractText,
       detailLines: documentProvider.detailLines,
+    );
+    _publishScreenText(
+      getScreenText(noteTitle, formattedSummary, documentProvider.detailLines),
     );
 
     return Scaffold(
@@ -326,5 +330,25 @@ class _PreviewDocumentScreenState extends State<PreviewDocumentScreen> {
         ),
       ),
     );
+  }
+
+  String getScreenText(
+    String title,
+    String summary,
+    List<String> detailLines,
+  ) {
+    return [
+      'Document preview screen.',
+      title,
+      summary,
+      if (detailLines.isNotEmpty) detailLines.join(' '),
+    ].join(' ');
+  }
+
+  void _publishScreenText(String text) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<AccessibilityProvider>().setScreenText(text);
+    });
   }
 }

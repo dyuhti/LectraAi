@@ -1,109 +1,82 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
-class TtsVoice {
-  const TtsVoice({
-    required this.name,
-    required this.locale,
-  });
-
-  final String name;
-  final String locale;
-
-  @override
-  String toString() => '$name ($locale)';
-}
-
-class AccessibilityTtsService {
+class TtsService {
   final FlutterTts _tts = FlutterTts();
-
-  Future<void> initialize({
-    VoidCallback? onStart,
-    VoidCallback? onComplete,
-    VoidCallback? onPause,
-    VoidCallback? onCancel,
-  }) async {
-    await _tts.awaitSpeakCompletion(true);
-    await _tts.setVolume(1.0);
-
-    _tts.setStartHandler(() {
-      onStart?.call();
-    });
-
-    _tts.setCompletionHandler(() {
-      onComplete?.call();
-    });
-
-    _tts.setPauseHandler(() {
-      onPause?.call();
-    });
-
-    _tts.setCancelHandler(() {
-      onCancel?.call();
-    });
-  }
-
-  Future<List<String>> getLanguages() async {
-    final dynamic languages = await _tts.getLanguages;
-    if (languages is List) {
-      return languages.map((dynamic item) => item.toString()).toList();
-    }
-    return <String>[];
-  }
-
-  Future<List<TtsVoice>> getVoices() async {
-    final dynamic rawVoices = await _tts.getVoices;
-    if (rawVoices is! List) {
-      return <TtsVoice>[];
-    }
-
-    return rawVoices
-        .whereType<Map<dynamic, dynamic>>()
-        .map((Map<dynamic, dynamic> voice) {
-          final name = voice['name']?.toString() ?? 'Default Voice';
-          final locale = voice['locale']?.toString() ?? 'unknown';
-          return TtsVoice(name: name, locale: locale);
-        })
-        .toList();
-  }
-
-  Future<void> setLanguage(String language) async {
-    await _tts.setLanguage(language);
-  }
-
-  Future<void> setVoice(TtsVoice voice) async {
-    await _tts.setVoice(<String, String>{
-      'name': voice.name,
-      'locale': voice.locale,
-    });
-  }
+  double _speechRate = 0.5;
+  String _voiceGender = 'female';
 
   Future<void> setSpeechRate(double rate) async {
-    await _tts.setSpeechRate(rate.clamp(0.2, 1.0));
-  }
-
-  Future<void> setPitch(double pitch) async {
-    await _tts.setPitch(pitch.clamp(0.5, 2.0));
+    _speechRate = rate.clamp(0.25, 2.0);
+    await _tts.setSpeechRate(_speechRate);
   }
 
   Future<void> speak(String text) async {
     if (text.trim().isEmpty) return;
+    await _tts.setLanguage('en-US');
+    await _tts.setSpeechRate(_speechRate);
+    await _applyVoiceGender();
     await _tts.speak(text);
   }
 
   Future<void> pause() async {
-    try {
-      await _tts.pause();
-    } catch (_) {
-      await _tts.stop();
-    }
+    await _tts.pause();
   }
 
   Future<void> stop() async {
     await _tts.stop();
   }
 
-  Future<void> dispose() async {
-    await _tts.stop();
+  Future<void> setVoiceGender(String gender) async {
+    _voiceGender = gender.toLowerCase() == 'male' ? 'male' : 'female';
+    await _applyVoiceGender();
+  }
+
+  Future<void> _applyVoiceGender() async {
+    final dynamic voices = await _tts.getVoices;
+    if (voices is! List) return;
+
+    final voiceList = voices
+        .whereType<Map<dynamic, dynamic>>()
+        .map((voice) => Map<String, dynamic>.from(voice))
+        .toList();
+
+    final enVoices = voiceList.where((voice) {
+      final locale = voice['locale']?.toString().toLowerCase() ?? '';
+      return locale.contains('en') && locale.contains('us');
+    }).toList();
+
+    Map<String, dynamic>? chosenVoice;
+
+    bool matchesMale(String name) {
+      final normalizedName = name.toLowerCase();
+      return normalizedName.contains('male') ||
+          normalizedName.contains('david') ||
+          normalizedName.contains('mark') ||
+          normalizedName.contains('alex');
+    }
+
+    bool matchesFemale(String name) {
+      final normalizedName = name.toLowerCase();
+      return normalizedName.contains('female') ||
+          normalizedName.contains('woman') ||
+          normalizedName.contains('zira') ||
+          normalizedName.contains('samantha');
+    }
+
+    for (final voice in enVoices) {
+      final name = voice['name']?.toString() ?? '';
+      if (_voiceGender == 'male' ? matchesMale(name) : matchesFemale(name)) {
+        chosenVoice = voice;
+        break;
+      }
+    }
+
+    chosenVoice ??= enVoices.isNotEmpty ? enVoices.first : null;
+    if (chosenVoice == null) return;
+
+    await _tts.setVoice(<String, String>{
+      'name': chosenVoice['name']?.toString() ?? '',
+      'locale': chosenVoice['locale']?.toString() ?? 'en-US',
+    });
   }
 }

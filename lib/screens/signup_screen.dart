@@ -99,7 +99,7 @@ class _SignupScreenState extends State<SignupScreen> with SingleTickerProviderSt
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.red.shade600,
+        backgroundColor: AppColors.primaryDark,
       ),
     );
   }

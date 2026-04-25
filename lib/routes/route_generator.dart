@@ -23,6 +23,9 @@ import 'package:smart_lecture_notes/screens/help_center_screen.dart';
 import 'package:smart_lecture_notes/screens/help_tutorial_screen.dart';
 import 'package:smart_lecture_notes/routes/page_transitions.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
+import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
+import 'package:smart_lecture_notes/widgets/tts_control_widget.dart';
+import 'package:provider/provider.dart';
 
 /// Route Generator
 /// Handles all named route navigation with optional arguments
@@ -123,9 +126,76 @@ class RouteGenerator {
   /// Build standard material page route with fade transition
   static Route<dynamic> _buildRoute(Widget page) {
     return AppPageTransitions.fadeSlide(
-      page,
+      AccessibilityRouteHost(page: page),
       settings: RouteSettings(name: page.runtimeType.toString()),
     );
+  }
+
+  static String _screenTextForRoute(String? routeName, Widget page) {
+    switch (routeName) {
+      case 'HomeScreen':
+      case AppRoutes.home:
+        return 'Smart Notes home. Your AI-powered lecture companion. Capture and create notes. Quick capture. View notes. Today study progress includes notes, images, and quizzes.';
+      case 'CaptureCreateNotesScreen':
+      case AppRoutes.captureNotes:
+        return 'Capture create notes screen. Choose how to capture content from camera, files, or audio.';
+      case 'PreviewDocumentScreen':
+      case AppRoutes.previewDocument:
+        return 'Document preview screen. Review the detected content and continue processing.';
+      case 'NotesScreen':
+      case AppRoutes.notes:
+      case AppRoutes.viewNotes:
+        return 'Notes screen. Browse your saved notes and open a note to see summary, key points, formulas, and examples.';
+      case 'StudyDashboardScreen':
+      case AppRoutes.studyAnalytics:
+        return 'Study analytics dashboard. Review your progress, performance, and learning trends.';
+      case 'GenerateQuizScreen':
+      case AppRoutes.generateQuiz:
+        return 'Generate quiz screen. Create a practice quiz from your notes and study material.';
+      case 'PracticeQuizScreen':
+      case AppRoutes.practiceQuiz:
+        return 'Practice quiz screen. Answer questions and check your understanding.';
+      case 'QuizResultsScreen':
+      case AppRoutes.quizResults:
+        return 'Quiz results screen. Review your score and feedback after completing the quiz.';
+      case 'RevisionRemindersScreen':
+      case AppRoutes.revisionReminder:
+        return 'Revision reminders screen. Manage scheduled study reminders.';
+      case 'HelpCenterScreen':
+      case AppRoutes.helpCenter:
+        return 'Help center screen. Find support and answers to common questions.';
+      case 'HelpTutorialScreen':
+      case AppRoutes.appGuide:
+      case AppRoutes.tutorial:
+        return 'Tutorial screen. Learn how to use Smart Notes and its features.';
+      case 'SettingsScreen':
+      case AppRoutes.settings:
+      case AppRoutes.profile:
+        return 'Settings screen. Adjust app preferences and accessibility options.';
+      case 'LoginScreen':
+      case AppRoutes.login:
+        return 'Login screen. Sign in to your Smart Notes account.';
+      case 'SignupScreen':
+      case AppRoutes.register:
+        return 'Sign up screen. Create a new Smart Notes account.';
+      case 'ForgotPasswordScreen':
+      case AppRoutes.forgotPassword:
+        return 'Forgot password screen. Recover access to your account.';
+      case 'RecordLectureScreen':
+      case AppRoutes.recordAudio:
+        return 'Record lecture screen. Capture audio and generate notes from the recording.';
+      case 'CameraCaptureScreen':
+      case AppRoutes.smartCamera:
+        return 'Camera capture screen. Take a photo to extract text and generate notes.';
+      case 'FileUploadScreen':
+      case AppRoutes.fileUpload:
+        return 'File upload screen. Upload a document to generate notes.';
+      case 'NoteDetailScreen':
+      case AppRoutes.noteDetail:
+        return 'Note detail screen. Read the selected note, summary, key points, formulas, and examples.';
+      default:
+        return page.runtimeType.toString();
+    }
   }
 
   /// Build error route for undefined navigation paths
@@ -165,6 +235,55 @@ class RouteGenerator {
           ),
         ),
       ),
+    );
+  }
+}
+
+class AccessibilityRouteHost extends StatefulWidget {
+  const AccessibilityRouteHost({super.key, required this.page});
+
+  final Widget page;
+
+  @override
+  State<AccessibilityRouteHost> createState() => _AccessibilityRouteHostState();
+}
+
+class _AccessibilityRouteHostState extends State<AccessibilityRouteHost> {
+  bool _hasRegisteredDefaultText = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_hasRegisteredDefaultText) {
+      return;
+    }
+
+    _hasRegisteredDefaultText = true;
+    final routeName = ModalRoute.of(context)?.settings.name;
+    final defaultText = RouteGenerator._screenTextForRoute(routeName, widget.page);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<AccessibilityProvider>().setScreenText(defaultText);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEnabled = context.watch<AccessibilityProvider>().isEnabled;
+    final screenText = context.watch<AccessibilityProvider>().screenText;
+
+    return Stack(
+      children: [
+        widget.page,
+        if (isEnabled && screenText.isNotEmpty)
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: TtsControlWidget(text: screenText),
+            ),
+          ),
+      ],
     );
   }
 }

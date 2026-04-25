@@ -164,7 +164,7 @@ class _ForgotPasswordFlowState extends State<ForgotPasswordFlow> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.red.shade600,
+        backgroundColor: AppColors.primaryDark,
       ),
     );
   }

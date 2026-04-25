@@ -38,9 +38,9 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     if (_feedbackController.text.trim().isEmpty) {
       print('[FEEDBACK SCREEN] Validation error: Feedback is empty');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter your feedback'),
-          backgroundColor: Colors.orange,
+        SnackBar(
+          content: const Text('Please enter your feedback'),
+          backgroundColor: AppColors.primaryLight,
           duration: Duration(seconds: 2),
         ),
       );
@@ -86,7 +86,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.primaryDark,
           duration: const Duration(seconds: 3),
         ),
       );

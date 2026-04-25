@@ -93,14 +93,14 @@ class _ModernAuthFieldState extends State<ModernAuthField> {
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide(
-              color: Colors.red.withOpacity(0.6),
+              color: AppColors.primaryLight.withOpacity(0.55),
               width: 1.5,
             ),
           ),
           focusedErrorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: const BorderSide(
-              color: Colors.red,
+              color: AppColors.primaryLight,
               width: 2,
             ),
           ),
@@ -124,7 +124,7 @@ class _ModernAuthFieldState extends State<ModernAuthField> {
                 )
               : null,
           errorStyle: const TextStyle(
-            color: Colors.red,
+            color: AppColors.textSecondary,
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
@@ -198,7 +198,7 @@ class _ModernAuthButtonState extends State<ModernAuthButton>
             gradient: LinearGradient(
               colors: [
                 AppColors.primary,
-                AppColors.primary.withOpacity(0.9),
+                AppColors.primaryLight,
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -278,8 +278,8 @@ class AuthScreenHeader extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppColors.primaryLight.withOpacity(0.2),
-                  AppColors.primary.withOpacity(0.1),
+                  AppColors.primaryLight.withOpacity(0.14),
+                  AppColors.primary.withOpacity(0.08),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,

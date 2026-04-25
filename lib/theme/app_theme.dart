@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  static const Color primary = Color(0xFF001F6B);
-  static const Color primaryDark = Color(0xFF0D2A7A);
-  static const Color primaryLight = Color(0xFF5B7FFF);
-  static const Color background = Colors.white;
-  static const Color textSecondary = Color(0xFF4A5F8A);
-  static const Color border = Color(0xFFE8EDEF);
+  static const Color primary = Color(0xFF1E3A8A);
+  static const Color primaryDark = Color(0xFF172554);
+  static const Color primaryLight = Color(0xFF3B82F6);
+  static const Color secondary = Color(0xFF3B82F6);
+  static const Color background = Color(0xFFF3F4F6);
+  static const Color surface = Color(0xFFFFFFFF);
+  static const Color textPrimary = Color(0xFF374151);
+  static const Color textSecondary = Color(0xFF6B7280);
+  static const Color border = Color(0xFFD1D5DB);
 }
 
 class AppDecorations {
@@ -28,7 +31,7 @@ class AppDecorations {
   static BoxDecoration heroCard() {
     return BoxDecoration(
       gradient: const LinearGradient(
-        colors: [AppColors.primary, AppColors.primaryDark],
+        colors: [AppColors.primary, AppColors.secondary],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),
@@ -45,7 +48,7 @@ class AppDecorations {
 
   static BoxDecoration iconContainer({double radius = 14}) {
     return BoxDecoration(
-      color: AppColors.primaryLight.withOpacity(0.12),
+      color: AppColors.primaryLight.withOpacity(0.10),
       borderRadius: BorderRadius.circular(radius),
     );
   }

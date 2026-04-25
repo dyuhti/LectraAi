@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
 import 'package:smart_lecture_notes/providers/quiz_provider.dart';
 import 'package:smart_lecture_notes/routes/app_routes.dart';
 import 'package:smart_lecture_notes/theme/quiz_theme.dart';
@@ -38,6 +39,9 @@ class _QuizResultsScreenState extends State<QuizResultsScreen>
     final scorePercentage = totalCount == 0
         ? 0
         : ((correctCount / totalCount) * 100).round();
+    _publishScreenText(
+      getScreenText(scorePercentage, correctCount, totalCount),
+    );
 
     return Scaffold(
       backgroundColor: QuizColors.softBackground,
@@ -196,6 +200,25 @@ class _QuizResultsScreenState extends State<QuizResultsScreen>
         ),
       ),
     );
+  }
+
+  String getScreenText(int scorePercentage, int correctCount, int totalCount) {
+    final feedback = scorePercentage >= 80
+        ? 'Excellent performance. Keep pushing higher.'
+        : scorePercentage >= 60
+            ? 'Solid progress. Review a few key concepts.'
+            : scorePercentage >= 40
+                ? 'Keep practicing to strengthen recall.'
+                : 'Review the lecture notes and try again.';
+
+    return 'Quiz results. Score $scorePercentage percent. $correctCount out of $totalCount correct. $feedback';
+  }
+
+  void _publishScreenText(String text) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<AccessibilityProvider>().setScreenText(text);
+    });
   }
 }
 

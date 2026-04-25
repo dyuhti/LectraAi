@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/models/note.dart';
+import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
 import 'package:smart_lecture_notes/providers/note_provider.dart';
 import 'package:smart_lecture_notes/screens/note_detail_screen.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
@@ -16,6 +17,8 @@ class NotesScreen extends StatefulWidget {
 class _NotesScreenState extends State<NotesScreen> {
   @override
   Widget build(BuildContext context) {
+    _publishScreenText(getScreenText(context));
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -101,6 +104,23 @@ class _NotesScreenState extends State<NotesScreen> {
         },
       ),
     );
+  }
+
+  String getScreenText(BuildContext context) {
+    final notes = context.read<NoteProvider>().notes;
+    if (notes.isEmpty) {
+      return 'My notes screen. No notes yet. Upload and process documents to create notes.';
+    }
+
+    final titles = notes.take(3).map((note) => note.title).join(' ');
+    return 'My notes screen. ${notes.length} notes available. $titles';
+  }
+
+  void _publishScreenText(String text) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<AccessibilityProvider>().setScreenText(text);
+    });
   }
 
   Widget _buildNoteCard(BuildContext context, Note note) {

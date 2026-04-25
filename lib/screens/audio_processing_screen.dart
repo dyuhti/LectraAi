@@ -151,14 +151,14 @@ Next class we will discuss cellular respiration and how it relates to photosynth
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: Colors.red,
+                    color: AppColors.textSecondary,
                     width: 3,
                   ),
                 ),
                 child: const Center(
                   child: Icon(
-                    Icons.error,
-                    color: Colors.red,
+                    Icons.info_outline,
+                    color: AppColors.textSecondary,
                     size: 40,
                   ),
                 ),
@@ -170,14 +170,14 @@ Next class we will discuss cellular respiration and how it relates to photosynth
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: Colors.green,
+                    color: AppColors.primaryLight,
                     width: 3,
                   ),
                 ),
                 child: const Center(
                   child: Icon(
-                    Icons.check,
-                    color: Colors.green,
+                    Icons.check_circle_outline,
+                    color: AppColors.primaryLight,
                     size: 40,
                   ),
                 ),
@@ -201,7 +201,7 @@ Next class we will discuss cellular respiration and how it relates to photosynth
               _errorMessage ?? _processingSubtitle,
               style: TextStyle(
                 fontSize: 14,
-                color: _errorMessage != null ? Colors.red : AppColors.textSecondary,
+                color: AppColors.textSecondary,
                 fontWeight: FontWeight.w500,
               ),
               textAlign: TextAlign.center,

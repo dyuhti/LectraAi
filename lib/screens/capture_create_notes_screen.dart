@@ -9,6 +9,7 @@ import 'package:smart_lecture_notes/screens/preview_text_screen.dart';
 import 'package:smart_lecture_notes/services/api_service.dart';
 import 'package:smart_lecture_notes/services/ocr_service.dart';
 import 'package:smart_lecture_notes/services/ai_service.dart';
+import 'package:smart_lecture_notes/theme/app_theme.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 class CaptureCreateNotesScreen extends StatefulWidget {
@@ -193,9 +194,9 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
                           duration: const Duration(milliseconds: 300),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: _isListening ? Colors.red : _royal.withOpacity(0.1),
+                            color: _isListening ? AppColors.primaryLight : _royal.withOpacity(0.1),
                             boxShadow: _isListening ? [
-                              BoxShadow(color: Colors.red.withOpacity(0.4), blurRadius: 15, spreadRadius: 5)
+                              BoxShadow(color: AppColors.primaryLight.withOpacity(0.35), blurRadius: 15, spreadRadius: 5)
                             ] : [],
                           ),
                           child: IconButton(

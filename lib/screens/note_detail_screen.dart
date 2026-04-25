@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/models/note.dart';
+import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
 import 'package:smart_lecture_notes/providers/note_provider.dart';
 import 'package:smart_lecture_notes/screens/my_notes_screen.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
@@ -32,6 +33,33 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
     _currentNote = widget.note;
   }
 
+  String getScreenText() {
+    final note = _currentNote;
+    final title = note?.title ?? widget.noteTitle ?? 'Note Details';
+    final subject = note?.subject ?? widget.categoryName ?? 'Document';
+    final summary = (note?.summary ?? '').trim();
+    final keyPoints = note?.keyPoints ?? const [];
+    final formulas = note?.formulas ?? const [];
+    final examples = note?.examples ?? const [];
+
+    return [
+      'Note details.',
+      title,
+      subject,
+      if (summary.isNotEmpty) summary,
+      if (keyPoints.isNotEmpty) keyPoints.join(' '),
+      if (formulas.isNotEmpty) formulas.join(' '),
+      if (examples.isNotEmpty) examples.join(' '),
+    ].join(' ');
+  }
+
+  void _publishScreenText(String text) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<AccessibilityProvider>().setScreenText(text);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final note = _currentNote;
@@ -44,6 +72,7 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
     final examples = note?.examples ?? const [];
     final canDelete = note != null && note.id.trim().isNotEmpty && !_isDeleting;
     final canEdit = note != null && note.id.trim().isNotEmpty;
+    _publishScreenText(getScreenText());
 
     final sections = <Widget>[];
     if (summary.isNotEmpty) {
@@ -95,8 +124,8 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
         _buildSectionCard(
           title: 'Examples',
           icon: Icons.science,
-          iconColor: const Color(0xFF10B981),
-          backgroundColor: const Color(0xFFECFDF5),
+          iconColor: AppColors.primaryLight,
+          backgroundColor: AppColors.primaryLight.withOpacity(0.08),
           child: _buildBulletList(examples),
         ),
       );

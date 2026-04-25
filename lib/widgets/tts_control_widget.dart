@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:smart_lecture_notes/services/tts_service.dart';
+import 'package:smart_lecture_notes/services/accessibility_tts_service.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 
 /// Reusable TTS control widget. Drop into any screen with:
@@ -17,119 +17,127 @@ class _TtsControlWidgetState extends State<TtsControlWidget> {
   final TtsService _tts = TtsService();
   double _speechRate = 0.5;
   String _voiceGender = 'female';
-
-  @override
-  void initState() {
-    super.initState();
-    _tts.initialize(onStateChanged: () {
-      if (mounted) setState(() {});
-    });
-  }
+  bool _isPlaying = false;
 
   @override
   void dispose() {
-    _tts.dispose();
     super.dispose();
   }
 
-  void _onPlay() => _tts.speak(widget.text);
-  void _onPause() => _tts.pause();
-  void _onStop() => _tts.stop();
+  Future<void> _onPlay() async {
+    if (!mounted) return;
+    setState(() => _isPlaying = true);
+    await _tts.speak(widget.text);
+  }
+
+  Future<void> _onPause() async {
+    await _tts.pause();
+    if (!mounted) return;
+    setState(() => _isPlaying = false);
+  }
+
+  Future<void> _onStop() async {
+    await _tts.stop();
+    if (!mounted) return;
+    setState(() => _isPlaying = false);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.white,
+      elevation: 8,
+      shadowColor: Colors.black.withOpacity(0.05),
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 12,
-            offset: const Offset(0, -4),
-          ),
-        ],
       ),
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Speed slider
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        child: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'Speed',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    color: AppColors.primaryDark,
-                  ),
+                // Speed slider
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Speed',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: AppColors.primaryDark,
+                      ),
+                    ),
+                    Text(
+                      '${_speechRate.toStringAsFixed(1)}x',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
-                Text(
-                  '${_speechRate.toStringAsFixed(1)}x',
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
+                Slider(
+                  value: _speechRate,
+                  min: 0.25,
+                  max: 2.0,
+                  divisions: 7,
+                  activeColor: AppColors.primary,
+                  onChanged: (val) {
+                    setState(() => _speechRate = val);
+                    _tts.setSpeechRate(val);
+                  },
                 ),
-              ],
-            ),
-            Slider(
-              value: _speechRate,
-              min: 0.25,
-              max: 2.0,
-              divisions: 7,
-              activeColor: AppColors.primary,
-              onChanged: (val) {
-                setState(() => _speechRate = val);
-                _tts.setSpeechRate(val);
-              },
-            ),
 
-            // Voice gender toggle
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Text(
-                  'Voice:',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                    color: AppColors.primaryDark,
-                  ),
+                // Voice gender toggle
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Text(
+                      'Voice:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        color: AppColors.primaryDark,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    _buildVoiceChip('female', 'Female', Icons.female_rounded),
+                    const SizedBox(width: 8),
+                    _buildVoiceChip('male', 'Male', Icons.male_rounded),
+                  ],
                 ),
-                const SizedBox(width: 10),
-                _buildVoiceChip('female', 'Female', Icons.female_rounded),
-                const SizedBox(width: 8),
-                _buildVoiceChip('male', 'Male', Icons.male_rounded),
-              ],
-            ),
-            const SizedBox(height: 12),
+                const SizedBox(height: 12),
 
-            // Playback controls
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildControlButton(
-                  Icons.stop_circle_rounded,
-                  Colors.redAccent,
-                  40,
-                  _onStop,
-                ),
-                const SizedBox(width: 16),
-                _buildControlButton(
-                  _tts.isPlaying
-                      ? Icons.pause_circle_filled_rounded
-                      : Icons.play_circle_fill_rounded,
-                  AppColors.primary,
-                  56,
-                  _tts.isPlaying ? _onPause : _onPlay,
+                // Playback controls
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildControlButton(
+                      Icons.stop_circle_rounded,
+                      AppColors.textSecondary,
+                      40,
+                      _onStop,
+                    ),
+                    const SizedBox(width: 16),
+                    _buildControlButton(
+                      _isPlaying
+                          ? Icons.pause_circle_filled_rounded
+                          : Icons.play_circle_fill_rounded,
+                      AppColors.primary,
+                      56,
+                      _isPlaying ? _onPause : _onPlay,
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -151,7 +159,7 @@ class _TtsControlWidgetState extends State<TtsControlWidget> {
       onTap: () {
         setState(() => _voiceGender = gender);
         _tts.setVoiceGender(gender);
-        if (_tts.isPlaying) {
+        if (_isPlaying) {
           _tts.stop().then((_) => _tts.speak(widget.text));
         }
       },
