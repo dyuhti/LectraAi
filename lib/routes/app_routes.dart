@@ -30,6 +30,7 @@ class AppRoutes {
   static const String reviewAnswers = '/review-answers';
 
   // Learning Features
+  static const String adaptiveLearning = '/adaptive-learning';
   static const String revisionReminder = '/revision-reminder';
   static const String studyAnalytics = '/study-analytics';
 
@@ -59,6 +60,7 @@ class AppRoutes {
       practiceQuiz: 'Practice Quiz',
       quizResults: 'Quiz Results',
       reviewAnswers: 'Review Answers',
+      adaptiveLearning: 'Adaptive Learning',
       revisionReminder: 'Revision Reminder',
       studyAnalytics: 'Study Analytics',
       profile: 'Profile',

@@ -6,7 +6,7 @@ import 'package:smart_lecture_notes/providers/note_provider.dart';
 import 'package:smart_lecture_notes/routes/app_routes.dart';
 import 'package:smart_lecture_notes/services/ai_service.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
-import 'package:smart_lecture_notes/widgets/tts_control_widget.dart';
+import 'package:smart_lecture_notes/utils/tts_text_builder.dart';
 
 class AdaptiveNotesScreen extends StatefulWidget {
   const AdaptiveNotesScreen({Key? key}) : super(key: key);
@@ -17,6 +17,27 @@ class AdaptiveNotesScreen extends StatefulWidget {
 
 class _AdaptiveNotesScreenState extends State<AdaptiveNotesScreen> {
   final AiService _aiService = AiService();
+
+  static const TextStyle _bodyTextStyle = TextStyle(
+    fontSize: 16,
+    height: 1.55,
+    color: AppColors.textPrimary,
+    fontWeight: FontWeight.w500,
+  );
+
+  static const TextStyle _inlineBoldStyle = TextStyle(
+    fontSize: 16,
+    height: 1.55,
+    color: AppColors.primaryDark,
+    fontWeight: FontWeight.w700,
+  );
+
+  static const TextStyle _sideHeadingStyle = TextStyle(
+    fontSize: 16,
+    height: 1.55,
+    color: AppColors.primaryDark,
+    fontWeight: FontWeight.w800,
+  );
 
   String _selectedMode = 'exam';
   String? selectedNoteId;
@@ -84,6 +105,46 @@ class _AdaptiveNotesScreenState extends State<AdaptiveNotesScreen> {
     return buffer.toString().trim();
   }
 
+  String _getScreenText(List<Note> notes) {
+    if (notes.isEmpty) {
+      return buildStructuredText(
+        title: 'Adaptive Learning',
+        content: 'No saved notes available yet.',
+        keyPoints: const [],
+      );
+    }
+
+    if (selectedNote == null) {
+      return buildStructuredText(
+        title: 'Adaptive Learning',
+        content: 'Please select a note to begin.',
+        keyPoints: const [],
+      );
+    }
+
+    final ttsText = _buildTtsText();
+    if (ttsText.isNotEmpty) {
+      return ttsText;
+    }
+
+    return buildStructuredText(
+      title: 'Adaptive Learning',
+      content: 'Select a mode to generate adaptive notes.',
+      keyPoints: const ['Beginner mode', 'Exam mode', 'Panic mode'],
+    );
+  }
+
+  void _publishScreenText(String text) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<AccessibilityProvider>().setScreenTextIfCurrent(
+            context,
+            text,
+            priority: 2,
+          );
+    });
+  }
+
   void _selectMode(String mode) {
     setState(() {
       _selectedMode = mode;
@@ -92,6 +153,126 @@ class _AdaptiveNotesScreenState extends State<AdaptiveNotesScreen> {
     if (selectedNote != null) {
       loadAdaptiveNotes(selectedNote);
     }
+  }
+
+  String _sanitizeStructuredText(String input) {
+    return input
+        .replaceAll('\\n', '\n')
+        .replaceAll(RegExp(r'<\s*br\s*/?>', caseSensitive: false), '\n')
+        .replaceAll(RegExp(r'</\s*(p|div|h1|h2|h3|h4|h5|h6|li|ul|ol)\s*>', caseSensitive: false), '\n')
+        .replaceAll(RegExp(r'<\s*li\s*>', caseSensitive: false), '• ')
+        .replaceAll(RegExp(r'<[^>]*>'), '')
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'")
+        .replaceAll(RegExp(r'[ \t]+'), ' ')
+        .trim();
+  }
+
+  List<InlineSpan> _buildInlineSpans(String text, TextStyle style) {
+    final spans = <InlineSpan>[];
+    final matcher = RegExp(r'\*\*(.+?)\*\*').allMatches(text);
+    var cursor = 0;
+
+    for (final match in matcher) {
+      if (match.start > cursor) {
+        spans.add(TextSpan(text: text.substring(cursor, match.start), style: style));
+      }
+
+      final boldText = match.group(1) ?? '';
+      spans.add(TextSpan(text: boldText, style: _inlineBoldStyle));
+      cursor = match.end;
+    }
+
+    if (cursor < text.length) {
+      spans.add(TextSpan(text: text.substring(cursor), style: style));
+    }
+
+    if (spans.isEmpty) {
+      spans.add(TextSpan(text: text, style: style));
+    }
+
+    return spans;
+  }
+
+  bool _isSideHeading(String line) {
+    if (line.isEmpty) {
+      return false;
+    }
+    if (line.endsWith(':')) {
+      return true;
+    }
+    return RegExp(r'^[A-Z][A-Za-z0-9\s\-/()]{2,}$').hasMatch(line) && line.length <= 60;
+  }
+
+  Widget _buildFormattedLine(String rawLine) {
+    final trimmed = rawLine.trim();
+    if (trimmed.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final hasBullet = RegExp(r'^([\-*]|•)\s+').hasMatch(trimmed);
+    var line = trimmed.replaceFirst(RegExp(r'^([\-*]|•)\s+'), '');
+    line = line.replaceFirst(RegExp(r'^#+\s*'), '');
+
+    final singleStarMatch = RegExp(r'^\*(.+)\*$').firstMatch(line);
+    if (singleStarMatch != null) {
+      line = singleStarMatch.group(1)?.trim() ?? line;
+    }
+
+    final sideHeading = _isSideHeading(line);
+    final style = sideHeading ? _sideHeadingStyle : _bodyTextStyle;
+
+    final textWidget = RichText(
+      text: TextSpan(
+        children: _buildInlineSpans(line, style),
+      ),
+    );
+
+    if (!hasBullet) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: textWidget,
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 7, right: 8),
+            child: Icon(Icons.circle, size: 7, color: AppColors.primary),
+          ),
+          Expanded(child: textWidget),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFormattedContent(String rawText) {
+    final sanitized = _sanitizeStructuredText(rawText);
+    if (sanitized.isEmpty) {
+      return const Text(
+        'No content available.',
+        style: _bodyTextStyle,
+      );
+    }
+
+    final lines = sanitized
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: lines.map(_buildFormattedLine).toList(),
+    );
   }
 
   Widget _buildModeChip({
@@ -124,8 +305,7 @@ class _AdaptiveNotesScreenState extends State<AdaptiveNotesScreen> {
   @override
   Widget build(BuildContext context) {
     final notes = context.watch<NoteProvider>().notes;
-    final isAccessibilityEnabled = context.watch<AccessibilityProvider>().isEnabled;
-    final ttsText = _buildTtsText();
+    _publishScreenText(_getScreenText(notes));
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -265,26 +445,15 @@ class _AdaptiveNotesScreenState extends State<AdaptiveNotesScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        Text(
-                          content,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            height: 1.5,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
+                        _buildFormattedContent(content),
                         const SizedBox(height: 16),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: keyPoints
                               .map<Widget>((p) => Padding(
                                     padding: const EdgeInsets.only(bottom: 8),
-                                    child: Text(
-                                      '• $p',
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        color: AppColors.textSecondary,
-                                      ),
+                                    child: _buildFormattedLine(
+                                      '• ${_sanitizeStructuredText(p)}',
                                     ),
                                   ))
                               .toList(),
@@ -295,11 +464,6 @@ class _AdaptiveNotesScreenState extends State<AdaptiveNotesScreen> {
                 },
               ),
             ),
-            if (isAccessibilityEnabled && ttsText.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: TtsControlWidget(text: ttsText),
-              ),
           ],
         ),
       ),

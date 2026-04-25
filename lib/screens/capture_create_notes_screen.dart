@@ -4,7 +4,6 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:smart_lecture_notes/routes/app_routes.dart';
-import 'package:smart_lecture_notes/screens/adaptive_notes_screen.dart';
 import 'package:smart_lecture_notes/screens/preview_text_screen.dart';
 import 'package:smart_lecture_notes/services/ai_service.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
@@ -400,12 +399,7 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
   }
 
   void _handleCaptureBoardTap() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const AdaptiveNotesScreen(),
-      ),
-    );
+    Navigator.of(context).pushNamed(AppRoutes.adaptiveLearning);
   }
 }
 

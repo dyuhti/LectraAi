@@ -24,6 +24,27 @@ class PreviewTextScreen extends StatefulWidget {
 }
 
 class _PreviewTextScreenState extends State<PreviewTextScreen> {
+  static const TextStyle _bodyTextStyle = TextStyle(
+    fontSize: 15,
+    height: 1.6,
+    color: AppColors.textPrimary,
+    fontWeight: FontWeight.w500,
+  );
+
+  static const TextStyle _inlineBoldStyle = TextStyle(
+    fontSize: 15,
+    height: 1.6,
+    color: AppColors.primaryDark,
+    fontWeight: FontWeight.w700,
+  );
+
+  static const TextStyle _sideHeadingStyle = TextStyle(
+    fontSize: 15,
+    height: 1.6,
+    color: AppColors.primaryDark,
+    fontWeight: FontWeight.w800,
+  );
+
   late String _title;
   late String _content;
   late List<String> _keyPoints;
@@ -176,50 +197,137 @@ class _PreviewTextScreenState extends State<PreviewTextScreen> {
     );
   }
 
+  String _sanitizeStructuredText(String input) {
+    return input
+        .replaceAll('\\n', '\n')
+        .replaceAll(RegExp(r'<\s*br\s*/?>', caseSensitive: false), '\n')
+        .replaceAll(RegExp(r'</\s*(p|div|h1|h2|h3|h4|h5|h6|li|ul|ol)\s*>', caseSensitive: false), '\n')
+        .replaceAll(RegExp(r'<\s*li\s*>', caseSensitive: false), '• ')
+        .replaceAll(RegExp(r'<[^>]*>'), '')
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'")
+        .replaceAll(RegExp(r'[ \t]+'), ' ')
+        .trim();
+  }
+
+  bool _isSideHeading(String line) {
+    if (line.isEmpty) {
+      return false;
+    }
+    if (line.endsWith(':')) {
+      return true;
+    }
+    return RegExp(r'^[A-Z][A-Za-z0-9\s\-/()]{2,}$').hasMatch(line) && line.length <= 60;
+  }
+
+  List<InlineSpan> _buildInlineSpans(String text, TextStyle style) {
+    final spans = <InlineSpan>[];
+    final matcher = RegExp(r'\*\*(.+?)\*\*').allMatches(text);
+    var cursor = 0;
+
+    for (final match in matcher) {
+      if (match.start > cursor) {
+        spans.add(TextSpan(text: text.substring(cursor, match.start), style: style));
+      }
+
+      final boldText = match.group(1) ?? '';
+      spans.add(TextSpan(text: boldText, style: _inlineBoldStyle));
+      cursor = match.end;
+    }
+
+    if (cursor < text.length) {
+      spans.add(TextSpan(text: text.substring(cursor), style: style));
+    }
+
+    if (spans.isEmpty) {
+      spans.add(TextSpan(text: text, style: style));
+    }
+
+    return spans;
+  }
+
+  Widget _buildFormattedLine(String rawLine) {
+    final trimmed = rawLine.trim();
+    if (trimmed.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final hasBullet = RegExp(r'^([\-*]|•)\s+').hasMatch(trimmed);
+    var line = trimmed.replaceFirst(RegExp(r'^([\-*]|•)\s+'), '');
+    line = line.replaceFirst(RegExp(r'^#+\s*'), '');
+
+    final singleStarMatch = RegExp(r'^\*(.+)\*$').firstMatch(line);
+    if (singleStarMatch != null) {
+      line = singleStarMatch.group(1)?.trim() ?? line;
+    }
+
+    final sideHeading = _isSideHeading(line);
+    final style = sideHeading ? _sideHeadingStyle : _bodyTextStyle;
+    final richText = RichText(
+      text: TextSpan(children: _buildInlineSpans(line, style)),
+    );
+
+    if (!hasBullet) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: richText,
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 6, right: 12),
+            child: Icon(Icons.circle, size: 7, color: AppColors.primary),
+          ),
+          Expanded(child: richText),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFormattedContent(String rawText) {
+    final sanitized = _sanitizeStructuredText(rawText);
+    if (sanitized.isEmpty) {
+      return const Text(
+        'No data available.',
+        style: _bodyTextStyle,
+      );
+    }
+
+    final lines = sanitized
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: lines.map(_buildFormattedLine).toList(),
+    );
+  }
+
   Widget _buildContent(dynamic content) {
     if (content is String) {
-      return Text(
-        content.isEmpty ? 'No data available.' : content,
-        style: const TextStyle(
-          fontSize: 15,
-          height: 1.6,
-          color: AppColors.textSecondary,
-          fontWeight: FontWeight.w500,
-        ),
-      );
+      return _buildFormattedContent(content);
     } else if (content is List<String>) {
       if (content.isEmpty) {
         return const Text(
           'No points available.',
-          style: TextStyle(color: AppColors.textSecondary),
+          style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w500),
         );
       }
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: content.map((point) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12.0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.only(top: 6.0, right: 12.0),
-                  child: Icon(Icons.circle, size: 8, color: AppColors.primary),
-                ),
-                Expanded(
-                  child: Text(
-                    point,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      height: 1.6,
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
+          return _buildFormattedLine('• ${_sanitizeStructuredText(point)}');
         }).toList(),
       );
     }

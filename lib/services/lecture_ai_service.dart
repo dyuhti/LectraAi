@@ -129,7 +129,8 @@ $text
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return data['choices'][0]['message']['content'];
+        final content = data['choices'][0]['message']['content']?.toString() ?? '';
+        return _extractCleanDocumentSummary(content);
       } else if (response.statusCode == 401) {
         throw Exception('Invalid Groq API key. Please check your credentials.');
       } else {
@@ -301,5 +302,64 @@ ${transcript.substring(0, (transcript.length / 3).toInt())}...
 - Create flashcards for important points
 - Practice explaining concepts out loud
 ''';
+  }
+
+  String _extractCleanDocumentSummary(String rawContent) {
+    if (rawContent.trim().isEmpty) {
+      return '';
+    }
+
+    var content = rawContent.trim();
+
+    // Remove markdown code fences when model wraps response.
+    final codeFenceMatch = RegExp(r'```(?:[a-zA-Z]+)?\s*([\s\S]*?)```').firstMatch(content);
+    if (codeFenceMatch != null) {
+      content = (codeFenceMatch.group(1) ?? content).trim();
+    }
+
+    // If model returned structured output with Summary/Transcript sections, keep only Summary.
+    final summarySection = RegExp(
+      r'(?is)\bsummary\s*:\s*([\s\S]*?)(?=\n\s*transcript\s*:|$)',
+    ).firstMatch(content);
+    if (summarySection != null) {
+      content = (summarySection.group(1) ?? '').trim();
+    }
+
+    // If the model echoed prompt instructions, force fallback path by returning empty.
+    final lower = content.toLowerCase();
+    if (lower.contains('you are a smart note processing assistant') ||
+        lower.contains('output format (strict)') ||
+        lower.contains('raw text:') ||
+        lower.contains('{{extracted_text}}')) {
+      return '';
+    }
+
+    final forbiddenLinePrefixes = <String>[
+      'title:',
+      'transcript:',
+      'input:',
+      'objective:',
+      'processing rules:',
+      'output format',
+      'important:',
+      'raw text:',
+      '---',
+    ];
+
+    final lines = content
+        .split(RegExp(r'\n+'))
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .where((line) {
+          final l = line.toLowerCase();
+          return !forbiddenLinePrefixes.any((prefix) => l.startsWith(prefix));
+        })
+        .toList();
+
+    if (lines.isEmpty) {
+      return '';
+    }
+
+    return lines.take(5).join('\n');
   }
 }

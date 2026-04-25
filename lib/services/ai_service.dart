@@ -1,13 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class AiService {
-  // We use 10.0.2.2 as the default for Android Emulators to reach the host machine.
-  // Note: Your app.py FastAPI server runs on port 8003 based on your .env
   static const String _baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:8003',
+    defaultValue: 'http://192.168.0.191:8003',
   );
+  static const Duration _requestTimeout = Duration(seconds: 30);
 
   /// Connects to the Gemini backend endpoint to generate structured notes based on mode.
   /// Returns a Map containing 'title', 'content', and 'key_points'.
@@ -27,7 +27,7 @@ class AiService {
           'text': text,
           'mode': mode,
         }),
-      );
+      ).timeout(_requestTimeout);
 
       if (response.statusCode == 200) {
         try {
@@ -68,6 +68,9 @@ class AiService {
         throw Exception(errorMessage);
       }
     } catch (e) {
+      if (e is TimeoutException) {
+        throw Exception('Adaptive notes generation timed out. Please ensure the backend is running and try again.');
+      }
       if (e is FormatException) {
         rethrow;
       }

@@ -17,6 +17,15 @@ class NotesScreen extends StatefulWidget {
 
 class _NotesScreenState extends State<NotesScreen> {
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<NoteProvider>().loadNotes();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     _publishScreenText(getScreenText(context));
 

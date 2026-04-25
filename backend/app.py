@@ -1,4 +1,5 @@
 import os
+import asyncio
 import tempfile
 import logging
 import json
@@ -6,8 +7,9 @@ import re
 import base64
 import secrets
 import smtplib
-from typing import Optional
-from datetime import datetime, timedelta
+import socket
+from typing import Optional, List
+from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 from pathlib import Path
 from dotenv import load_dotenv
@@ -19,7 +21,8 @@ import bcrypt
 import requests
 from pymongo import MongoClient
 from bson.objectid import ObjectId
-import google.generativeai as genai
+from google import genai
+from google.genai import types as genai_types
 
 # Load environment variables from backend/.env regardless of current working directory
 BASE_DIR = Path(__file__).resolve().parent
@@ -28,6 +31,8 @@ load_dotenv(dotenv_path=BASE_DIR / ".env")
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024
 
 app = FastAPI(title="SmartNotes Transcription API")
 
@@ -46,6 +51,69 @@ GROQ_ENDPOINT = "https://api.groq.com/openai/v1/audio/transcriptions"
 GROQ_CHAT_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_CHAT_MODEL = os.getenv("GROQ_CHAT_MODEL", "llama-3.1-8b-instant")
 GROQ_VISION_MODEL = os.getenv("GROQ_VISION_MODEL", "llama-3.2-11b-vision-preview")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "").strip()
+GEMINI_COOLDOWN_MINUTES = int(os.getenv("GEMINI_COOLDOWN_MINUTES", "15"))
+_gemini_disabled_until: Optional[datetime] = None
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _to_utc(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def _gemini_model_candidates() -> List[str]:
+    candidates: List[str] = []
+    if GEMINI_MODEL:
+        candidates.append(GEMINI_MODEL)
+
+    for model_name in [
+        "gemini-2.0-flash",
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-flash",
+    ]:
+        if model_name not in candidates:
+            candidates.append(model_name)
+
+    return candidates
+
+
+def _is_gemini_disabled() -> bool:
+    if _gemini_disabled_until is None:
+        return False
+    return _utc_now() < _gemini_disabled_until
+
+
+def _disable_gemini_temporarily(reason: str) -> None:
+    global _gemini_disabled_until
+    _gemini_disabled_until = _utc_now() + timedelta(minutes=GEMINI_COOLDOWN_MINUTES)
+    logger.warning(
+        f"[GENERATE_NOTES] Gemini temporarily disabled until {_gemini_disabled_until.isoformat()} due to: {reason}"
+    )
+
+
+def _generate_gemini_response_text(client: genai.Client, model_name: str, prompt: str) -> str:
+    response = client.models.generate_content(
+        model=model_name,
+        contents=prompt,
+        config=genai_types.GenerateContentConfig(
+            system_instruction="You are an AI tutor.",
+            response_mime_type="application/json",
+            temperature=0.3,
+        ),
+    )
+    return (getattr(response, "text", "") or "").strip()
+
+
+def _file_too_large_response() -> JSONResponse:
+    return JSONResponse(
+        status_code=413,
+        content={"error": "File too large", "text": ""},
+    )
 
 # MongoDB Configuration
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/smartnotes")
@@ -424,7 +492,7 @@ async def send_otp(payload: SendOtpRequest):
         )
 
     otp = _generate_otp()
-    expires_at = datetime.utcnow() + timedelta(minutes=OTP_EXPIRY_MINUTES)
+    expires_at = _utc_now() + timedelta(minutes=OTP_EXPIRY_MINUTES)
 
     print(f"[SEND_OTP] Generated OTP: {otp}, Expires: {expires_at}")
 
@@ -521,7 +589,7 @@ async def verify_otp(payload: VerifyOtpRequest):
         except ValueError:
             expires_at = None
 
-    if not isinstance(expires_at, datetime) or datetime.utcnow() > expires_at:
+    if not isinstance(expires_at, datetime) or _utc_now() > _to_utc(expires_at):
         return JSONResponse(
             status_code=400,
             content={"error": "OTP expired"},
@@ -598,7 +666,7 @@ async def reset_password(payload: ResetPasswordRequest):
         except ValueError:
             expires_at = None
 
-    if not isinstance(expires_at, datetime) or datetime.utcnow() > expires_at:
+    if not isinstance(expires_at, datetime) or _utc_now() > _to_utc(expires_at):
         return JSONResponse(
             status_code=400,
             content={"error": "OTP expired"},
@@ -614,7 +682,7 @@ async def reset_password(payload: ResetPasswordRequest):
         {
             "$set": {
                 "password": hashed_password,
-                "updatedAt": datetime.utcnow(),
+                "updatedAt": _utc_now(),
             },
             "$unset": {
                 "passwordResetOtp": "",
@@ -652,10 +720,16 @@ async def transcribe(file: UploadFile = File(...)):
     
     try:
         # Save uploaded file to temp location
+        content = await file.read()
+        if len(content) > MAX_UPLOAD_SIZE_BYTES:
+            logger.warning(
+                f"[TRANSCRIBE] File too large: {len(content)} bytes ({file.filename})"
+            )
+            return _file_too_large_response()
+
         with tempfile.NamedTemporaryFile(
             suffix=".wav", delete=False, dir=tempfile.gettempdir()
         ) as temp_file:
-            content = await file.read()
             temp_file.write(content)
             temp_path = temp_file.name
         
@@ -809,76 +883,241 @@ async def generate_notes_with_gemini(text: str, mode: str, is_retry: bool = Fals
     gemini_key = os.getenv("GEMINI_API_KEY")
     if not gemini_key:
         raise ValueError("GEMINI_API_KEY not configured")
-        
-    genai.configure(api_key=gemini_key)
+
+    gemini_client = genai.Client(api_key=gemini_key)
     
-    # We do NOT use response_mime_type="application/json" here because the prompt instructs returning JSON
-    # and sometimes strict JSON mode can interfere if we rely on custom cleaning. 
-    # But since the prompt requests STRICT JSON STRING, it's safer to keep the generation config unless it fails.
-    # Actually, we will keep it to enforce JSON response structure.
-    model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
-        system_instruction="You are an AI tutor.",
-        generation_config={
-            "response_mime_type": "application/json",
-            "temperature": 0.3
-        }
-    )
-    
-    mode_instructions = {
-        "beginner": "- very simple language\n- short sentences\n- explain concepts clearly\n- include small examples",
-        "exam": "- concise\n- key points only\n- revision focused\n- no extra explanation",
-        "panic": "- ultra short\n- step-by-step instructions\n- no extra words\n- maximum clarity",
-        "accessible": "- extremely simple language\n- no jargon\n- very short sentences\n- easy to understand for low literacy users\n- structured and clear"
+    normalized_mode = (mode or "exam").strip().lower()
+    if normalized_mode not in {"beginner", "exam", "panic"}:
+        normalized_mode = "exam"
+
+    mode_labels = {
+        "beginner": "Beginner",
+        "exam": "Exam",
+        "panic": "Panic",
     }
-    
-    instruction = mode_instructions.get(mode, mode_instructions["exam"])
-    
-    prompt = f"""Adapt the content based on the user's mode.
 
-Mode: {mode}
+    output_format_by_mode = {
+        "beginner": (
+            "🧠 Simple Explanation:\n"
+            "(Explain clearly in easy words)\n\n"
+            "📌 Key Concepts:\n"
+            "* Point 1\n"
+            "* Point 2\n"
+            "* Point 3\n\n"
+            "🌍 Real-Life Example:\n"
+            "(Relatable example)\n\n"
+            "⚡ Quick Summary:\n"
+            "(2–3 lines)\n\n"
+            "📝 Practice Questions:\n"
+            "1. Easy question\n"
+            "2. Easy question\n"
+            "3. Easy question"
+        ),
+        "exam": (
+            "🎯 Important Topics (Ranked):\n"
+            "1. Topic\n"
+            "2. Topic\n"
+            "3. Topic\n\n"
+            "📖 Key Definitions:\n"
+            "* Definition 1\n"
+            "* Definition 2\n\n"
+            "❓ Important Questions:\n"
+            "1. Question\n"
+            "2. Question\n"
+            "3. Question\n\n"
+            "🧩 Answer Framework:\n"
+            "(How to write answers in exam)\n\n"
+            "⚡ Revision Sheet:\n"
+            "* Bullet points only"
+        ),
+        "panic": (
+            "🚨 Ultra Short Summary:\n"
+            "(max 5 lines)\n\n"
+            "📌 Must Remember:\n"
+            "* Point 1\n"
+            "* Point 2\n\n"
+            "🔑 Keywords / Formulas:\n"
+            "* keyword1\n"
+            "* keyword2\n\n"
+            "⚡ 30-Second Revision Trick:\n"
+            "(memory shortcut)\n\n"
+            "❓ Likely Questions:\n"
+            "1. Question\n"
+            "2. Question\n"
+            "3. Question"
+        ),
+    }
 
-Instructions:
-{instruction}
+    prompt = f"""You are an intelligent adaptive learning assistant integrated into a smart notes application.
 
-Return ONLY valid JSON.
-Do NOT include markdown or extra text.
+Your task is to transform a student's selected note into a structured learning output based on the selected mode.
 
-FORMAT:
+INPUT PARAMETERS:
+Mode: {mode_labels[normalized_mode]}
+Note Content:
+{text}
+
+CORE INSTRUCTIONS:
+1. You MUST strictly adapt your response based on the selected mode:
+   - Beginner -> Deep understanding, simple explanations
+   - Exam -> High-scoring, structured, important points only
+   - Panic -> Ultra-fast revision, compressed content
+2. You MUST always:
+   - Use clean formatting
+   - Break content into sections
+   - Avoid unnecessary fluff
+   - Stay relevant to the note content only
+3. If the note is unclear or incomplete:
+   - Infer intelligently
+   - Do NOT say "insufficient data"
+
+MODE-SPECIFIC BEHAVIOR FOR CURRENT MODE ({mode_labels[normalized_mode]}):
+{output_format_by_mode[normalized_mode]}
+
+IMPORTANT RULES:
+- DO NOT mix modes
+- DO NOT give generic responses
+- ALWAYS base output on the provided note
+- Keep formatting clean and readable
+- Do not use HTML/XML tags (such as <h1>, <li>, <p>) and do not use markdown emphasis markers like ** or __ in the final content text
+- Be accurate and concise
+
+FINAL INSTRUCTION:
+Generate the best possible output for the selected mode using the given note.
+
+Return ONLY valid JSON. No markdown code fences.
+JSON schema:
 {{
-  "title": "short title",
-  "content": "main explanation",
-  "key_points": ["point1", "point2", "point3"]
-}}
+  "title": "A short mode-aware title",
+  "content": "The full formatted learning output matching the current mode exactly",
+  "key_points": ["5 to 8 concise high-value bullets extracted from the note and response"]
+}}"""
 
-Content:
-{text}"""
+    def _generate_notes_with_groq_fallback() -> dict:
+        if not GROQ_API_KEY:
+            raise ValueError("GROQ_API_KEY not configured for fallback")
 
-    try:
-        response = await model.generate_content_async(prompt)
-        response_text = response.text.strip()
-        
-        # JSON Cleaning
-        if response_text.startswith("```json"):
-            response_text = response_text[7:]
-        if response_text.startswith("```"):
-            response_text = response_text[3:]
-        if response_text.endswith("```"):
-            response_text = response_text[:-3]
-            
-        response_text = response_text.strip()
-        return json.loads(response_text)
-    except Exception as e:
-        if not is_retry:
-            logger.warning(f"[GENERATE_NOTES] JSON parsing failed, retrying... Error: {e}")
-            return await generate_notes_with_gemini(text, mode, is_retry=True)
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json",
+        }
+        body = {
+            "model": GROQ_CHAT_MODEL,
+            "messages": [
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": 0.3,
+            "response_format": {"type": "json_object"},
+        }
+
+        response = requests.post(
+            GROQ_CHAT_ENDPOINT,
+            headers=headers,
+            json=body,
+            timeout=45,
+        )
+
+        if response.status_code != 200:
+            raise ValueError(f"Groq fallback failed: {response.status_code} - {response.text}")
+
+        data = response.json()
+        choices = data.get("choices", [])
+        if not choices:
+            raise ValueError("Groq fallback returned no choices")
+
+        message = choices[0].get("message", {})
+        content = message.get("content", "")
+        parsed = _extract_json_object(content)
+
+        title = str(parsed.get("title") or "Generated Notes")
+        body_text = str(parsed.get("content") or "")
+        key_points_raw = parsed.get("key_points", [])
+        if isinstance(key_points_raw, list):
+            key_points = [str(point) for point in key_points_raw if str(point).strip()]
+        elif key_points_raw:
+            key_points = [str(key_points_raw)]
         else:
-            logger.error(f"[GENERATE_NOTES] Retry failed. Returning fallback JSON. Error: {e}")
+            key_points = []
+
+        return {
+            "title": title,
+            "content": body_text,
+            "key_points": key_points,
+        }
+
+    if _is_gemini_disabled():
+        logger.info("[GENERATE_NOTES] Gemini cooldown active, using Groq fallback directly")
+        try:
+            return _generate_notes_with_groq_fallback()
+        except Exception as groq_error:
+            logger.error(f"[GENERATE_NOTES] Groq fallback failed during Gemini cooldown: {groq_error}")
             return {
                 "title": "Notes Unavailable",
-                "content": "We couldn't generate notes at this time due to a parsing error. Please try again.",
-                "key_points": []
+                "content": "We couldn't generate notes at this time. Please try again.",
+                "key_points": [],
             }
+
+    attempts = 2 if not is_retry else 1
+    last_error: Optional[Exception] = None
+
+    for attempt in range(attempts):
+        for model_name in _gemini_model_candidates():
+            try:
+                response_text = await asyncio.to_thread(
+                    _generate_gemini_response_text,
+                    gemini_client,
+                    model_name,
+                    prompt,
+                )
+                if not response_text:
+                    raise ValueError("Gemini returned an empty response")
+
+                if response_text.startswith("```json"):
+                    response_text = response_text[7:]
+                if response_text.startswith("```"):
+                    response_text = response_text[3:]
+                if response_text.endswith("```"):
+                    response_text = response_text[:-3]
+
+                response_text = response_text.strip()
+                parsed = json.loads(response_text)
+                if not isinstance(parsed, dict):
+                    raise ValueError("Gemini response is not a JSON object")
+
+                logger.info(
+                    f"[GENERATE_NOTES] Success with model: {model_name} (attempt {attempt + 1})"
+                )
+                return parsed
+            except Exception as e:
+                last_error = e
+                error_text = str(e).lower()
+                if "quota exceeded" in error_text or "not found for api version" in error_text:
+                    _disable_gemini_temporarily(str(e))
+                    logger.info(
+                        "[GENERATE_NOTES] Switching to Groq fallback immediately after Gemini availability failure"
+                    )
+                    try:
+                        return _generate_notes_with_groq_fallback()
+                    except Exception as groq_error:
+                        logger.error(
+                            f"[GENERATE_NOTES] Groq fallback failed after Gemini availability failure: {groq_error}"
+                        )
+                logger.warning(
+                    f"[GENERATE_NOTES] Model {model_name} failed on attempt {attempt + 1}: {e}"
+                )
+
+    logger.warning(f"[GENERATE_NOTES] All Gemini model attempts failed: {last_error}")
+
+    try:
+        logger.info("[GENERATE_NOTES] Falling back to Groq for adaptive notes generation")
+        return _generate_notes_with_groq_fallback()
+    except Exception as groq_error:
+        logger.error(f"[GENERATE_NOTES] Groq fallback failed: {groq_error}")
+        return {
+            "title": "Notes Unavailable",
+            "content": "We couldn't generate notes at this time. Please try again.",
+            "key_points": [],
+        }
 
 
 @app.post("/generate-notes")
@@ -1027,6 +1266,11 @@ async def process_image(request: Request, file: Optional[UploadFile] = File(defa
                     status_code=400,
                     content={"error": "Empty image file", "text": ""},
                 )
+            if len(content) > MAX_UPLOAD_SIZE_BYTES:
+                logger.warning(
+                    f"[PROCESS_IMAGE] File too large: {len(content)} bytes ({file.filename})"
+                )
+                return _file_too_large_response()
             image_base64 = base64.b64encode(content).decode("utf-8")
             image_mime = file.content_type or "image/jpeg"
         else:
@@ -1038,6 +1282,17 @@ async def process_image(request: Request, file: Optional[UploadFile] = File(defa
                 mime_match = re.match(r"data:([^;]+);base64", header)
                 if mime_match:
                     image_mime = mime_match.group(1)
+
+            try:
+                decoded_bytes = base64.b64decode(image_base64, validate=True)
+            except Exception:
+                decoded_bytes = b""
+
+            if len(decoded_bytes) > MAX_UPLOAD_SIZE_BYTES:
+                logger.warning(
+                    f"[PROCESS_IMAGE] Base64 payload too large: {len(decoded_bytes)} bytes"
+                )
+                return _file_too_large_response()
 
         if not image_base64:
             return JSONResponse(
@@ -1159,8 +1414,8 @@ async def save_transcript(payload: SaveTranscriptRequest):
             "cleanedText": payload.cleanText,
             "summary": payload.summary,
             "keyPoints": payload.keyPoints,
-            "createdAt": datetime.utcnow(),
-            "updatedAt": datetime.utcnow(),
+            "createdAt": _utc_now(),
+            "updatedAt": _utc_now(),
         }
         
         # Insert into MongoDB
@@ -1287,8 +1542,8 @@ async def process_and_save_transcript(payload: SaveTranscriptRequest):
             "cleanedText": normalized["clean_text"],
             "summary": normalized["summary"],
             "keyPoints": normalized["key_points"],
-            "createdAt": datetime.utcnow(),
-            "updatedAt": datetime.utcnow(),
+            "createdAt": _utc_now(),
+            "updatedAt": _utc_now(),
         }
         
         save_result = notes_collection.insert_one(note_doc)
@@ -1348,7 +1603,7 @@ async def update_note(note_id: str, payload: SaveTranscriptRequest):
                     "cleanedText": payload.cleanText,
                     "summary": payload.summary,
                     "keyPoints": payload.keyPoints,
-                    "updatedAt": datetime.utcnow(),
+                    "updatedAt": _utc_now(),
                 }
             }
         )
@@ -1402,7 +1657,7 @@ async def submit_feedback(payload: FeedbackRequest):
             "email": payload.email.strip() if payload.email else "",
             "feedback": payload.feedback.strip(),
             "userId": payload.userId.strip() if payload.userId else "",
-            "submittedAt": datetime.utcnow(),
+            "submittedAt": _utc_now(),
         }
         
         result = feedback_collection.insert_one(feedback_doc)
@@ -1426,7 +1681,20 @@ async def submit_feedback(payload: FeedbackRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("FASTAPI_PORT", 8001))
     host = os.getenv("HOST", "0.0.0.0")
+    preferred_port = int(os.getenv("FASTAPI_PORT", 8001))
+
+    def _find_free_port(start_port: int, bind_host: str) -> int:
+        for candidate in range(start_port, 65536):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                try:
+                    sock.bind((bind_host, candidate))
+                except OSError:
+                    continue
+                return candidate
+        raise RuntimeError(f"No free port available from {start_port} to 65535")
+
+    port = _find_free_port(preferred_port, host)
     logger.info(f"Starting FastAPI server on {host}:{port}")
     uvicorn.run(app, host=host, port=port, log_level="debug")

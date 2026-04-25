@@ -503,7 +503,7 @@ class _HomeHeroCard extends StatelessWidget {
         // Ensure this hero always has enough height and that its footer row
         // doesn't overflow on small widths.
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 200),
+          constraints: const BoxConstraints(minHeight: 260),
           child: AspectRatio(
             aspectRatio: 16 / 9,
             child: ClipRRect(
@@ -618,7 +618,7 @@ class _HomeHeroCard extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const Spacer(),
+                        const SizedBox(height: 18),
                         Row(
                           children: [
                             Expanded(

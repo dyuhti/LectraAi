@@ -15,6 +15,8 @@ class FileUploadScreen extends StatefulWidget {
 }
 
 class _FileUploadScreenState extends State<FileUploadScreen> {
+  static const int _maxUploadSizeBytes = 10 * 1024 * 1024;
+
   List<UploadedFile> uploadedFiles = [];
   bool _isUploading = false;
   double _uploadProgress = 0;
@@ -183,7 +185,7 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
             ),
             const SizedBox(height: 12),
             const Text(
-              'PDF, JPG, PNG, DOC up to 50MB',
+              'PDF, JPG, PNG, DOC (Max 10MB)',
               style: TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 13,
@@ -291,7 +293,7 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Supported Formats',
                   style: TextStyle(
                     color: AppColors.primary,
@@ -299,9 +301,18 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(height: 4),
-                Text(
+                const SizedBox(height: 4),
+                const Text(
                   'PDF, JPG, PNG, DOC, DOCX, PPTX',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Max file size: 10 MB',
                   style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 12,
@@ -425,6 +436,17 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
           )
           .toList();
 
+      final oversized = picked.where((file) => file.sizeBytes > _maxUploadSizeBytes).toList();
+      if (oversized.isNotEmpty) {
+        Get.snackbar(
+          'File too large',
+          'File too large. Max size is 10MB.',
+          backgroundColor: Colors.red.shade700,
+          colorText: Colors.white,
+        );
+        return;
+      }
+
       await _simulateFileUpload(selectedFiles: picked);
     } catch (e) {
       Get.snackbar(
@@ -444,6 +466,15 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
       final picked = <_PickedUpload>[];
       for (final image in images) {
         final bytes = await image.length();
+        if (bytes > _maxUploadSizeBytes) {
+          Get.snackbar(
+            'File too large',
+            'File too large. Max size is 10MB.',
+            backgroundColor: Colors.red.shade700,
+            colorText: Colors.white,
+          );
+          return;
+        }
         picked.add(
           _PickedUpload(
             name: p.basename(image.path),

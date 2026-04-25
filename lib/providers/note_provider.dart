@@ -39,7 +39,19 @@ class NoteProvider extends ChangeNotifier {
   Future<Note> createNote(Note note) async {
     final created = await _notesService.createNote(note);
     _notes.insert(0, created);
+    _error = null;
     notifyListeners();
+
+    try {
+      final latestNotes = await _notesService.fetchNotes();
+      _notes
+        ..clear()
+        ..addAll(latestNotes);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[NoteProvider] Failed to refresh notes after create: $e');
+    }
+
     return created;
   }
 

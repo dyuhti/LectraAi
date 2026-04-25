@@ -46,6 +46,8 @@ class _RecordLectureScreenState extends State<RecordLectureScreen>
   bool _summaryDialogOpen = false;
 
   String liveTranscript = '';
+  String _finalTranscript = '';
+  Map<String, dynamic>? _generatedSummary;
 
   @override
   void initState() {
@@ -154,6 +156,8 @@ class _RecordLectureScreenState extends State<RecordLectureScreen>
         _isStopping = false;
         _recordingSeconds = 0;
         liveTranscript = '';
+        _finalTranscript = '';
+        _generatedSummary = null;
         _isProcessing = false;
       });
 
@@ -227,6 +231,7 @@ class _RecordLectureScreenState extends State<RecordLectureScreen>
         _isRecording = false;
         _isPaused = false;
         liveTranscript = transcript;
+        _finalTranscript = transcript;
       });
 
       Map<String, dynamic>? processed;
@@ -251,14 +256,10 @@ class _RecordLectureScreenState extends State<RecordLectureScreen>
           cleanedText.isNotEmpty ? cleanedText : transcript;
 
       if (!mounted) return;
-      Navigator.of(context).push(
-        AppPageTransitions.fadeSlide(
-          AudioTranscriptScreen(
-            transcript: transcriptToShow,
-            summary: processed,
-          ),
-        ),
-      );
+      setState(() {
+        _finalTranscript = transcriptToShow;
+        _generatedSummary = processed;
+      });
     } catch (e) {
       print('[RECORDING] Exception during stop: $e');
       _showError('Failed to stop recording: $e');
@@ -400,6 +401,10 @@ class _RecordLectureScreenState extends State<RecordLectureScreen>
                             ? _buildLiveTranscriptBox()
                             : const SizedBox.shrink(),
                       ),
+                      if (!_isRecording && _generatedSummary != null) ...[
+                        const SizedBox(height: 18),
+                        _buildSummaryCard(),
+                      ],
                       const SizedBox(height: 24),
                       AnimatedSwitcher(
                         duration: const Duration(milliseconds: 420),
@@ -421,6 +426,40 @@ class _RecordLectureScreenState extends State<RecordLectureScreen>
                             ? _buildActiveControls()
                             : _buildIdleControl(),
                       ),
+                      if (!_isRecording && _generatedSummary != null) ...[
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                AppPageTransitions.fadeSlide(
+                                  AudioTranscriptScreen(
+                                    transcript: _finalTranscript,
+                                    summary: _generatedSummary,
+                                  ),
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _navy,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                            ),
+                            icon: const Icon(Icons.auto_awesome_rounded),
+                            label: const Text(
+                              'Open AI Notes',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                       if (!_isRecording) ...[
                         const SizedBox(height: 14),
                         const Text(
@@ -725,6 +764,133 @@ class _RecordLectureScreenState extends State<RecordLectureScreen>
         ],
       ),
     );
+  }
+
+  Widget _buildSummaryCard() {
+    final summaryData = _generatedSummary ?? const <String, dynamic>{};
+    final summaryText = (summaryData['summary'] ?? '').toString().trim();
+    final keyPoints = _extractKeyPoints(
+      summaryData['key_points'] ?? summaryData['keyPoints'],
+    );
+    final title = (summaryData['lectureTitle'] ?? '').toString().trim();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _chipBlueBg,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _navy.withOpacity(0.08), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: _navy.withOpacity(0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: _navy,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title.isNotEmpty ? title : 'AI Summary',
+                  style: const TextStyle(
+                    color: _navy,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            summaryText.isNotEmpty ? summaryText : 'Summary will appear here.',
+            style: const TextStyle(
+              color: _navyDeep,
+              fontSize: 13.5,
+              height: 1.55,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          if (keyPoints.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            const Text(
+              'Key Points',
+              style: TextStyle(
+                color: _navy,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...keyPoints.take(5).map(
+              (point) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      margin: const EdgeInsets.only(top: 6, right: 10),
+                      decoration: const BoxDecoration(
+                        color: _navy,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        point,
+                        style: const TextStyle(
+                          color: _navyDeep,
+                          fontSize: 12.8,
+                          height: 1.4,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  List<String> _extractKeyPoints(dynamic value) {
+    if (value is Iterable) {
+      return value
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+    if (value is String) {
+      return value
+          .split(RegExp(r'\n+'))
+          .map((line) => line.trim())
+          .where((line) => line.isNotEmpty)
+          .toList();
+    }
+    return [];
   }
 
   Widget _buildTranscriptStatus(String text, Color dotColor) {

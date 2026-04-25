@@ -1,12 +1,69 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:provider/provider.dart';
+import 'package:smart_lecture_notes/models/note.dart';
+import 'package:smart_lecture_notes/providers/note_provider.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 
-class StudyDashboardScreen extends StatelessWidget {
+class StudyDashboardScreen extends StatefulWidget {
   const StudyDashboardScreen({Key? key}) : super(key: key);
 
-  static const _weeklyData = [2.0, 3.0, 2.5, 4.0, 3.5, 5.0, 1.5];
+  @override
+  State<StudyDashboardScreen> createState() => _StudyDashboardScreenState();
+}
+
+class _StudyDashboardScreenState extends State<StudyDashboardScreen> {
   static const _days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<NoteProvider>().loadNotes();
+    });
+  }
+
+  List<double> _buildWeeklyData(List<Note> notes) {
+    final today = DateTime.now();
+    final values = List<double>.filled(7, 0);
+
+    for (final note in notes) {
+      final diff = today.difference(note.createdAt).inDays;
+      if (diff >= 0 && diff < 7) {
+        final index = (today.weekday - 1 - diff) % 7;
+        final safeIndex = index < 0 ? index + 7 : index;
+        values[safeIndex] += 1;
+      }
+    }
+
+    return values;
+  }
+
+  String _formatStudyHours(List<Note> notes) {
+    if (notes.isEmpty) {
+      return '0';
+    }
+
+    final minutes = notes.length * 18;
+    final hours = minutes / 60;
+    return hours.toStringAsFixed(hours >= 10 ? 0 : 1);
+  }
+
+  String _formatTodayProgress(List<Note> notes) {
+    final today = DateTime.now();
+    final todayCount = notes.where((note) {
+      return note.createdAt.year == today.year &&
+          note.createdAt.month == today.month &&
+          note.createdAt.day == today.day;
+    }).length;
+
+    if (todayCount == 0) {
+      return 'No notes created today';
+    }
+
+    return '$todayCount note${todayCount == 1 ? '' : 's'} created today';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,115 +86,172 @@ class StudyDashboardScreen extends StatelessWidget {
         ),
         centerTitle: false,
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: _StatCard(
-                      icon: Icons.note_outlined,
-                      label: 'Total Notes',
-                      value: '41',
-                    ),
+      body: Consumer<NoteProvider>(
+        builder: (context, noteProvider, _) {
+          if (noteProvider.isLoading && noteProvider.notes.isEmpty) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            );
+          }
+
+          if (noteProvider.error != null && noteProvider.notes.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  noteProvider.error!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                    height: 1.5,
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _StatCard(
-                      icon: Icons.access_time,
-                      label: 'Study Hours',
-                      value: '28',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 28),
-              const Text(
-                'Weekly Activity',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primary,
                 ),
               ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: AppDecorations.card(),
+            );
+          }
+
+          final notes = noteProvider.notes;
+          final weeklyData = _buildWeeklyData(notes);
+          final totalNotes = notes.length;
+          final studyHours = _formatStudyHours(notes);
+          final todayStatus = _formatTodayProgress(notes);
+          final maxValue = weeklyData.fold<double>(0, (max, value) => value > max ? value : max);
+
+          return RefreshIndicator(
+            onRefresh: () => context.read<NoteProvider>().loadNotes(),
+            color: AppColors.primary,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(
-                      height: 220,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: List.generate(_weeklyData.length, (index) {
-                          final value = _weeklyData[index];
-                          return Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    value.toStringAsFixed(1),
-                                    style: const TextStyle(
-                                      color: AppColors.primary,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  AnimatedContainer(
-                                    duration: const Duration(milliseconds: 250),
-                                    width: 18,
-                                    height: value * 28,
-                                    decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
-                                        colors: [
-                                          AppColors.primaryLight,
-                                          AppColors.primary,
-                                        ],
-                                        begin: Alignment.topCenter,
-                                        end: Alignment.bottomCenter,
-                                      ),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Text(
-                                    _days[index],
-                                    style: const TextStyle(
-                                      color: AppColors.primary,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }),
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _StatCard(
+                            icon: Icons.note_outlined,
+                            label: 'Total Notes',
+                            value: totalNotes.toString(),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _StatCard(
+                            icon: Icons.access_time,
+                            label: 'Study Hours',
+                            value: studyHours,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      'Study activity this week',
-                      style: TextStyle(
+                    const SizedBox(height: 12),
+                    Text(
+                      todayStatus,
+                      style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
+                    const SizedBox(height: 28),
+                    const Text(
+                      'Weekly Activity',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: AppDecorations.card(),
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            height: 220,
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: List.generate(weeklyData.length, (index) {
+                                final value = weeklyData[index];
+                                final normalized = maxValue == 0 ? 0.0 : value / maxValue;
+                                final barHeight = 12 + (normalized * 120);
+                                return Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        AnimatedSwitcher(
+                                          duration: const Duration(milliseconds: 250),
+                                          child: Text(
+                                            value.toStringAsFixed(0),
+                                            key: ValueKey('$index-$value'),
+                                            style: const TextStyle(
+                                              color: AppColors.primary,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        AnimatedContainer(
+                                          duration: const Duration(milliseconds: 350),
+                                          curve: Curves.easeOutCubic,
+                                          width: 18,
+                                          height: barHeight,
+                                          decoration: BoxDecoration(
+                                            gradient: const LinearGradient(
+                                              colors: [
+                                                AppColors.primaryLight,
+                                                AppColors.primary,
+                                              ],
+                                              begin: Alignment.topCenter,
+                                              end: Alignment.bottomCenter,
+                                            ),
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 10),
+                                        Text(
+                                          _days[index],
+                                          style: const TextStyle(
+                                            color: AppColors.primary,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            noteProvider.notes.isEmpty
+                                ? 'No activity yet'
+                                : 'Study activity updates as you save notes',
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -13,6 +14,7 @@ class AuthService {
     'AUTH_BASE_URL',
     defaultValue: 'http://192.168.0.191:5001/api/auth',
   );
+  static const Duration _requestTimeout = Duration(seconds: 8);
 
   String? lastError;
 
@@ -26,7 +28,7 @@ class AuthService {
           'email': email.trim(),
           'password': password,
         }),
-      );
+      ).timeout(_requestTimeout);
 
       if (response.statusCode == 200) {
         final data = _tryDecode(response.body);
@@ -47,6 +49,9 @@ class AuthService {
 
       lastError = _extractError(response.body, 'Invalid credentials');
       return false;
+    } on TimeoutException {
+      lastError = 'Sign in timed out. Please ensure backend is running and reachable.';
+      return false;
     } catch (_) {
       lastError = 'Network error. Please try again.';
       return false;
@@ -64,7 +69,7 @@ class AuthService {
           'email': email.trim(),
           'password': password,
         }),
-      );
+      ).timeout(_requestTimeout);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = _tryDecode(response.body);
@@ -77,6 +82,9 @@ class AuthService {
       }
 
       lastError = _extractError(response.body, 'Signup failed');
+      return false;
+    } on TimeoutException {
+      lastError = 'Signup timed out. Please ensure backend is running and reachable.';
       return false;
     } catch (_) {
       lastError = 'Network error. Please try again.';

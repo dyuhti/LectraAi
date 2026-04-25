@@ -14,7 +14,7 @@ class NotesApiService {
         _baseUrl = baseUrl ??
             const String.fromEnvironment(
               'NOTES_BASE_URL',
-              defaultValue: 'http://10.0.2.2:5001',
+              defaultValue: 'http://192.168.0.191:5001',
             );
 
   final http.Client _client;
@@ -47,13 +47,18 @@ class NotesApiService {
 
   Future<Note> createNote(Note note) async {
     final token = await _requireToken();
+    final payload = _normalizeCreatePayload(note);
     final response = await _client
         .post(
           Uri.parse('$_baseUrl/api/notes'),
           headers: _headers(token),
-          body: jsonEncode(note.toJson()),
+          body: jsonEncode(payload),
         )
         .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode == 413) {
+      throw Exception('Note is too large to save. Please shorten the transcript and try again.');
+    }
 
     if (response.statusCode != 201) {
       throw Exception(_extractError(response.body, 'Failed to save note'));
@@ -176,6 +181,44 @@ class NotesApiService {
       }
     }
     return fallback;
+  }
+
+  Map<String, dynamic> _normalizeCreatePayload(Note note) {
+    final raw = note.toJson();
+    return {
+      ...raw,
+      'title': _truncate(raw['title']?.toString() ?? '', 140),
+      'summary': _truncate(raw['summary']?.toString() ?? '', 2400),
+      'content': _truncate(raw['content']?.toString() ?? '', 50000),
+      'cleanedText': _truncate(raw['cleanedText']?.toString() ?? '', 50000),
+      'keyPoints': _limitStringList(raw['keyPoints'], maxItems: 20, maxChars: 300),
+      'formulas': _limitStringList(raw['formulas'], maxItems: 20, maxChars: 220),
+      'examples': _limitStringList(raw['examples'], maxItems: 20, maxChars: 300),
+    };
+  }
+
+  String _truncate(String value, int maxChars) {
+    final cleaned = value.trim();
+    if (cleaned.length <= maxChars) {
+      return cleaned;
+    }
+    return cleaned.substring(0, maxChars);
+  }
+
+  List<String> _limitStringList(
+    dynamic value, {
+    required int maxItems,
+    required int maxChars,
+  }) {
+    if (value is! Iterable) {
+      return const <String>[];
+    }
+
+    return value
+        .map((item) => _truncate(item.toString(), maxChars))
+        .where((item) => item.isNotEmpty)
+        .take(maxItems)
+        .toList();
   }
 
   void dispose() {

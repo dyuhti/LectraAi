@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:smart_lecture_notes/models/note.dart';
 import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
 import 'package:smart_lecture_notes/providers/note_provider.dart';
@@ -7,6 +11,7 @@ import 'package:smart_lecture_notes/screens/my_notes_screen.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 import 'package:smart_lecture_notes/widgets/edit_note_dialog.dart';
 import 'package:smart_lecture_notes/utils/tts_text_builder.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart';
 
 class NoteDetailScreen extends StatefulWidget {
   final Note? note;
@@ -28,32 +33,53 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
   bool _isDeleting = false;
   Note? _currentNote;
 
+  static const Color _neutralSurface = Colors.white;
+  static const Color _neutralTint = Color(0xFFF4F6FA);
+  static const Color _neutralBorder = Color(0xFFE5E7EB);
+  static const Color _neutralTitle = Color(0xFF0F172A);
+  static const Color _neutralBody = Color(0xFF334155);
+  static const Color _neutralMuted = Color(0xFF64748B);
+
   @override
   void initState() {
     super.initState();
     _currentNote = widget.note;
   }
 
-  String getScreenText() {
+  Note? _resolvedNote(BuildContext context) {
     final note = _currentNote;
+    if (note == null || note.id.trim().isEmpty) {
+      return note;
+    }
+
+    final notes = context.watch<NoteProvider>().notes;
+    final latest = notes.where((item) => item.id == note.id).toList();
+    if (latest.isNotEmpty) {
+      _currentNote = latest.first;
+      return latest.first;
+    }
+
+    return note;
+  }
+
+  String getScreenText(Note? note) {
     final title = note?.title ?? widget.noteTitle ?? 'Note Details';
-    final subject = note?.subject ?? widget.categoryName ?? 'Document';
     final summary = (note?.summary ?? '').trim();
-    final keyPoints = note?.keyPoints ?? const [];
-    final formulas = note?.formulas ?? const [];
-    final examples = note?.examples ?? const [];
+    final transcript = (note?.cleanedText.isNotEmpty == true
+        ? note?.cleanedText
+        : note?.content)
+      ?.trim() ??
+      '';
 
     final structuredContent = [
-      'Subject. $subject.',
-      if (summary.isNotEmpty) 'Summary. $summary',
-      if (formulas.isNotEmpty) 'Formulas. ${formulas.join('. ')}',
-      if (examples.isNotEmpty) 'Examples. ${examples.join('. ')}',
+      if (summary.isNotEmpty) 'AI Summary. $summary',
+      if (transcript.isNotEmpty) 'Transcript. $transcript',
     ].join('\n\n');
 
     return buildStructuredText(
       title: title,
       content: structuredContent,
-      keyPoints: keyPoints,
+      keyPoints: const [],
     );
   }
 
@@ -66,30 +92,27 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final note = _currentNote;
+    final note = _resolvedNote(context);
     final title = note?.title ?? widget.noteTitle ?? 'Note Details';
     final subject = note?.subject ?? widget.categoryName ?? 'Document';
     final createdAt = note?.createdAt ?? DateTime.now();
     final summary = (note?.summary ?? '').trim();
-    final keyPoints = note?.keyPoints ?? const [];
-    final formulas = note?.formulas ?? const [];
-    final examples = note?.examples ?? const [];
     final canDelete = note != null && note.id.trim().isNotEmpty && !_isDeleting;
     final canEdit = note != null && note.id.trim().isNotEmpty;
-    _publishScreenText(getScreenText());
+    _publishScreenText(getScreenText(note));
 
     final sections = <Widget>[];
     if (summary.isNotEmpty) {
       sections.add(
         _buildSectionCard(
-          title: 'Summary',
+          title: 'AI Summary',
           icon: Icons.subject,
-          iconColor: AppColors.primary,
-          backgroundColor: AppColors.primaryLight.withOpacity(0.08),
+          iconColor: _neutralTitle,
+          backgroundColor: _neutralSurface,
           child: Text(
             summary,
             style: const TextStyle(
-              color: Color(0xFF334155),
+              color: _neutralBody,
               fontSize: 14,
               height: 1.6,
               fontWeight: FontWeight.w500,
@@ -99,44 +122,33 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
       );
     }
 
-    if (keyPoints.isNotEmpty) {
+    final transcriptText = (note?.cleanedText.isNotEmpty == true
+        ? note?.cleanedText
+        : note?.content)
+      ?.trim() ??
+      '';
+    if (transcriptText.isNotEmpty) {
       sections.add(
         _buildSectionCard(
-          title: 'Key Points',
-          icon: Icons.lightbulb,
-          iconColor: const Color(0xFFF59E0B),
-          backgroundColor: const Color(0xFFFFF7E6),
-          child: _buildBulletList(keyPoints),
-        ),
-      );
-    }
-
-    if (formulas.isNotEmpty) {
-      sections.add(
-        _buildSectionCard(
-          title: 'Formulas',
-          icon: Icons.calculate,
-          iconColor: const Color(0xFF6366F1),
-          backgroundColor: const Color(0xFFF3F4FF),
-          child: _buildFormulaList(formulas),
-        ),
-      );
-    }
-
-    if (examples.isNotEmpty) {
-      sections.add(
-        _buildSectionCard(
-          title: 'Examples',
-          icon: Icons.science,
-          iconColor: AppColors.primaryLight,
-          backgroundColor: AppColors.primaryLight.withOpacity(0.08),
-          child: _buildBulletList(examples),
+          title: 'Transcript',
+          icon: Icons.receipt_long,
+          iconColor: _neutralTitle,
+          backgroundColor: _neutralSurface,
+          child: Text(
+            transcriptText,
+            style: const TextStyle(
+              color: _neutralBody,
+              fontSize: 14,
+              height: 1.6,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ),
       );
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8FF),
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -176,13 +188,14 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryLight.withOpacity(0.12),
+                  color: _neutralTint,
                   borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: _neutralBorder, width: 1),
                 ),
                 child: Text(
                   subject,
                   style: const TextStyle(
-                    color: AppColors.primary,
+                    color: _neutralTitle,
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
@@ -191,7 +204,7 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
               Text(
                 _formatFullDate(context, createdAt),
                 style: const TextStyle(
-                  color: AppColors.textSecondary,
+                  color: _neutralMuted,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),
@@ -204,7 +217,7 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
             style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w700,
-              color: AppColors.primary,
+              color: _neutralTitle,
               height: 1.3,
             ),
           ),
@@ -213,12 +226,12 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
             _buildSectionCard(
               title: 'Summary',
               icon: Icons.subject,
-              iconColor: AppColors.primary,
-              backgroundColor: AppColors.primaryLight.withOpacity(0.08),
+              iconColor: _neutralTitle,
+              backgroundColor: _neutralSurface,
               child: const Text(
                 'No structured content available.',
                 style: TextStyle(
-                  color: Color(0xFF334155),
+                  color: _neutralBody,
                   fontSize: 14,
                   height: 1.6,
                   fontWeight: FontWeight.w500,
@@ -445,43 +458,180 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
     );
   }
 
-  Widget _buildFormulaList(List<String> items) {
-    return Column(
-      children: items
-          .map(
-            (item) => Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppColors.primaryLight.withOpacity(0.2),
-                  width: 1,
-                ),
-              ),
-              child: Text(
-                item,
-                style: const TextStyle(
-                  color: Color(0xFF1E293B),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  height: 1.4,
-                ),
-              ),
-            ),
-          )
-          .toList(),
-    );
-  }
+  Future<void> _exportPDF(BuildContext context) async {
+    final note = _currentNote;
+    if (note == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No note available to export.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
 
-  void _exportPDF(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Generating PDF file...'),
         duration: Duration(seconds: 2),
       ),
     );
+
+    try {
+      final document = PdfDocument();
+
+      final titleFont = PdfStandardFont(
+        PdfFontFamily.helvetica,
+        20,
+        style: PdfFontStyle.bold,
+      );
+      final headingFont = PdfStandardFont(
+        PdfFontFamily.helvetica,
+        13,
+        style: PdfFontStyle.bold,
+      );
+      final bodyFont = PdfStandardFont(PdfFontFamily.helvetica, 11);
+      final mutedFont = PdfStandardFont(PdfFontFamily.helvetica, 10);
+
+      final title = note.title.trim().isEmpty ? 'Note Details' : note.title.trim();
+      final subject = note.subject.trim().isEmpty ? 'Document' : note.subject.trim();
+      final summary = note.summary.trim().isEmpty ? 'No summary available.' : note.summary.trim();
+      final transcript = note.cleanedText.isNotEmpty == true
+          ? note.cleanedText.trim()
+          : note.content.trim();
+
+      PdfPage page = document.pages.add();
+      const double left = 24;
+      const double top = 24;
+      final contentWidth = page.getClientSize().width - (left * 2);
+      double currentTop = top;
+
+      PdfLayoutResult layoutResult = PdfTextElement(
+        text: title,
+        font: titleFont,
+        brush: PdfSolidBrush(PdfColor(15, 23, 42)),
+      ).draw(
+        page: page,
+        bounds: Rect.fromLTWH(left, currentTop, contentWidth, 40),
+        format: PdfLayoutFormat(
+          layoutType: PdfLayoutType.paginate,
+          breakType: PdfLayoutBreakType.fitPage,
+        ),
+      ) as PdfLayoutResult;
+
+      page = layoutResult.page;
+      currentTop = layoutResult.bounds.bottom + 10;
+
+      layoutResult = PdfTextElement(
+        text: 'Subject: $subject',
+        font: mutedFont,
+        brush: PdfSolidBrush(PdfColor(100, 116, 139)),
+      ).draw(
+        page: page,
+        bounds: Rect.fromLTWH(left, currentTop, contentWidth, 24),
+        format: PdfLayoutFormat(
+          layoutType: PdfLayoutType.paginate,
+          breakType: PdfLayoutBreakType.fitPage,
+        ),
+      ) as PdfLayoutResult;
+
+      page = layoutResult.page;
+      currentTop = layoutResult.bounds.bottom + 18;
+
+      layoutResult = PdfTextElement(
+        text: 'AI Summary',
+        font: headingFont,
+        brush: PdfSolidBrush(PdfColor(15, 23, 42)),
+      ).draw(
+        page: page,
+        bounds: Rect.fromLTWH(left, currentTop, contentWidth, 20),
+        format: PdfLayoutFormat(
+          layoutType: PdfLayoutType.paginate,
+          breakType: PdfLayoutBreakType.fitPage,
+        ),
+      ) as PdfLayoutResult;
+
+      page = layoutResult.page;
+      currentTop = layoutResult.bounds.bottom + 8;
+
+      layoutResult = PdfTextElement(
+        text: summary,
+        font: bodyFont,
+        brush: PdfSolidBrush(PdfColor(51, 65, 85)),
+      ).draw(
+        page: page,
+        bounds: Rect.fromLTWH(left, currentTop, contentWidth, 0),
+        format: PdfLayoutFormat(
+          layoutType: PdfLayoutType.paginate,
+          breakType: PdfLayoutBreakType.fitPage,
+        ),
+      ) as PdfLayoutResult;
+
+      page = layoutResult.page;
+      currentTop = layoutResult.bounds.bottom + 18;
+
+      if (transcript.isNotEmpty) {
+        layoutResult = PdfTextElement(
+          text: 'Transcript',
+          font: headingFont,
+          brush: PdfSolidBrush(PdfColor(15, 23, 42)),
+        ).draw(
+          page: page,
+          bounds: Rect.fromLTWH(left, currentTop, contentWidth, 20),
+          format: PdfLayoutFormat(
+            layoutType: PdfLayoutType.paginate,
+            breakType: PdfLayoutBreakType.fitPage,
+          ),
+        ) as PdfLayoutResult;
+
+        page = layoutResult.page;
+        currentTop = layoutResult.bounds.bottom + 8;
+
+        PdfTextElement(
+          text: transcript,
+          font: bodyFont,
+          brush: PdfSolidBrush(PdfColor(51, 65, 85)),
+        ).draw(
+          page: page,
+          bounds: Rect.fromLTWH(left, currentTop, contentWidth, 0),
+          format: PdfLayoutFormat(
+            layoutType: PdfLayoutType.paginate,
+            breakType: PdfLayoutBreakType.fitPage,
+          ),
+        );
+      }
+
+      final directory = await getApplicationDocumentsDirectory();
+      final safeTitle = _sanitizeFileName(title);
+      final fileName = '${safeTitle}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final file = File(p.join(directory.path, fileName));
+      await file.writeAsBytes(await document.save(), flush: true);
+      document.dispose();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('PDF exported successfully to ${file.path}'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to export PDF: $e'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  String _sanitizeFileName(String input) {
+    final sanitized = input
+        .trim()
+        .replaceAll(RegExp(r'[\\/:*?"<>|]+'), '_')
+        .replaceAll(RegExp(r'\s+'), '_');
+    return sanitized.isEmpty ? 'note' : sanitized;
   }
 
   String _formatFullDate(BuildContext context, DateTime date) {

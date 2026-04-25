@@ -21,6 +21,7 @@ import 'package:smart_lecture_notes/screens/study_dashboard_screen.dart';
 import 'package:smart_lecture_notes/screens/settings_screen.dart';
 import 'package:smart_lecture_notes/screens/help_center_screen.dart';
 import 'package:smart_lecture_notes/screens/help_tutorial_screen.dart';
+import 'package:smart_lecture_notes/screens/adaptive_notes_screen.dart';
 import 'package:smart_lecture_notes/routes/page_transitions.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
@@ -96,6 +97,9 @@ class RouteGenerator {
         return _buildRoute(const ReviewAnswersScreen());
 
       // Learning Features
+      case AppRoutes.adaptiveLearning:
+        return _buildRoute(const AdaptiveNotesScreen());
+
       case AppRoutes.revisionReminder:
         return _buildRoute(const RevisionRemindersScreen());
 

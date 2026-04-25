@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'my_notes_screen.dart';
 import 'package:smart_lecture_notes/models/note.dart';
 import 'package:smart_lecture_notes/services/api_service.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
 import 'package:smart_lecture_notes/providers/note_provider.dart';
+import 'package:smart_lecture_notes/routes/app_routes.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 import 'package:smart_lecture_notes/utils/tts_text_builder.dart';
 
@@ -28,6 +28,33 @@ class AudioTranscriptScreen extends StatefulWidget {
 class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
   final TranscriptionApiService _apiService = TranscriptionApiService();
   bool _isSaving = false;
+
+  static const Color _neutralSurface = Colors.white;
+  static const Color _neutralTint = Color(0xFFF8FAFC);
+  static const Color _neutralBorder = Color(0xFFE5E7EB);
+  static const Color _neutralTitle = Color(0xFF0F172A);
+  static const Color _neutralBody = Color(0xFF334155);
+
+  static const TextStyle _sectionBodyStyle = TextStyle(
+    fontSize: 14,
+    color: _neutralBody,
+    height: 1.6,
+    fontWeight: FontWeight.w500,
+  );
+
+  static const TextStyle _keyPointBodyStyle = TextStyle(
+    fontSize: 13.5,
+    color: _neutralBody,
+    height: 1.45,
+    fontWeight: FontWeight.w500,
+  );
+
+  static const TextStyle _keyPointLeadStyle = TextStyle(
+    fontSize: 13.5,
+    color: _neutralTitle,
+    height: 1.45,
+    fontWeight: FontWeight.w800,
+  );
 
   @override
   void dispose() {
@@ -55,6 +82,105 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
       return lines.isNotEmpty ? lines : [value.trim()];
     }
     return [];
+  }
+
+  String _cleanDisplayText(String value) {
+    return value
+        .replaceAll(RegExp(r'^\s*[-*•]+\s*'), '')
+        .replaceAll(RegExp(r'^\s*\d+[\.)]\s*'), '')
+        .replaceAll(RegExp(r'\*\*(.+?)\*\*'), r'$1')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  Widget _buildSectionCard({
+    required String title,
+    required IconData icon,
+    required Widget child,
+    required Color tint,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: AppDecorations.card(color: _neutralSurface),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _neutralTint,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: _neutralBorder, width: 1),
+                ),
+                child: Icon(icon, color: AppColors.primary, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: _neutralTitle,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryText(String text) {
+    return Text(
+      _cleanDisplayText(text),
+      style: _sectionBodyStyle,
+    );
+  }
+
+  TextSpan _buildKeyPointSpan(String point) {
+    final cleaned = _cleanDisplayText(point);
+    final colonIndex = cleaned.indexOf(':');
+
+    if (colonIndex > 0 && colonIndex < cleaned.length - 1) {
+      return TextSpan(
+        children: [
+          TextSpan(text: cleaned.substring(0, colonIndex + 1), style: _keyPointLeadStyle),
+          TextSpan(text: ' ${cleaned.substring(colonIndex + 1).trim()}', style: _keyPointBodyStyle),
+        ],
+      );
+    }
+
+    return TextSpan(text: cleaned, style: _keyPointBodyStyle);
+  }
+
+  Widget _buildKeyPointItem(String point) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            margin: const EdgeInsets.only(top: 6, right: 10),
+            decoration: const BoxDecoration(
+              color: AppColors.primary,
+              shape: BoxShape.circle,
+            ),
+          ),
+          Expanded(
+            child: RichText(
+              text: _buildKeyPointSpan(point),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _saveNote() async {
@@ -123,6 +249,7 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
       );
 
       await context.read<NoteProvider>().createNote(note);
+      await context.read<NoteProvider>().loadNotes();
 
       print('[AI_NOTES] Note saved successfully to Mongo API');
       
@@ -137,11 +264,7 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
       if (!mounted) {
         return;
       }
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const MyNotesScreen()),
-      );
+      Get.offNamed(AppRoutes.notes);
     } catch (e) {
       print('[AI_NOTES] Error saving note: $e');
       if (mounted) {
@@ -203,13 +326,14 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryLight.withOpacity(0.12),
+                  color: _neutralTint,
                   borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: _neutralBorder, width: 1),
                 ),
                 child: const Text(
                   'AI Notes',
                   style: TextStyle(
-                    color: AppColors.primary,
+                    color: _neutralTitle,
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
@@ -217,81 +341,54 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Summary Section
-              const Text(
-                'Summary',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primary,
+              if (lectureTitle.isNotEmpty) ...[
+                Text(
+                  lectureTitle,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    height: 1.1,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.primaryDark,
+                    letterSpacing: -0.2,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
+                const SizedBox(height: 8),
+                const Text(
+                  'AI-generated lecture summary',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 22),
+              ],
 
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: AppDecorations.card(
-                  color: AppColors.primaryLight.withOpacity(0.08),
-                ),
-                child: Text(
+              // Summary Section
+              _buildSectionCard(
+                title: 'Summary',
+                icon: Icons.subject_rounded,
+                tint: AppColors.primary,
+                child: _buildSummaryText(
                   summaryText.isNotEmpty
                       ? summaryText
                       : 'This lecture covers linked list data structures, including types, implementation details, and complexity analysis compared to arrays.',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.primary,
-                    height: 1.5,
-                    fontWeight: FontWeight.w500,
-                  ),
                 ),
               ),
               const SizedBox(height: 28),
 
               // Key Points Section (if summary available)
               if (keyPoints.isNotEmpty)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Key Points',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ...keyPoints.map((point) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 6,
-                                height: 6,
-                                margin:
-                                    const EdgeInsets.only(top: 6, right: 10),
-                                decoration: const BoxDecoration(
-                                  color: AppColors.primary,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              Expanded(
-                                child: Text(
-                                  point,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: AppColors.primary,
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        )),
-                    const SizedBox(height: 28),
-                  ],
+                _buildSectionCard(
+                  title: 'Key Takeaways',
+                  icon: Icons.lightbulb_rounded,
+                  tint: AppColors.primary,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: keyPoints.map(_buildKeyPointItem).toList(),
+                  ),
                 ),
+              if (keyPoints.isNotEmpty) const SizedBox(height: 28),
 
               // Full notes section
               const Text(
@@ -317,8 +414,8 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
                           : 'AI Notes',
                       style: const TextStyle(
                         fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primaryDark,
                       ),
                     ),
                     const SizedBox(height: 16),

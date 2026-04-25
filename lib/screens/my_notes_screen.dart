@@ -21,6 +21,11 @@ class _MyNotesScreenState extends State<MyNotesScreen> {
   void initState() {
     super.initState();
     _searchController.addListener(_filterNotes);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<NoteProvider>().loadNotes();
+    });
   }
 
   void _filterNotes() {
