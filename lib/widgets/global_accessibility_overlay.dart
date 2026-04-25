@@ -76,7 +76,44 @@ class _GlobalAccessibilityOverlayState extends State<GlobalAccessibilityOverlay>
               padding: const EdgeInsets.all(_overlayPadding),
               child: KeyedSubtree(
                 key: _overlayKey,
-                child: TtsControlWidget(text: screenText),
+                child: Container(
+                  margin: const EdgeInsets.all(0),
+                  padding: const EdgeInsets.all(0),
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Drag handle
+                      Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      Container(
+                        margin: const EdgeInsets.all(0),
+                        padding: const EdgeInsets.all(0),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 10,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: TtsControlWidget(text: screenText),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),

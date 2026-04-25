@@ -236,11 +236,12 @@ class _AccessibilityToggleCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Accessibility Mode (Text-to-Speech)',
+                  'Accessibility Mode',
                   style: TextStyle(
                     color: _HomeScreenState._navy,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    // color: Colors.black87, // If you want to use black87 instead, uncomment this line
                   ),
                 ),
               ],

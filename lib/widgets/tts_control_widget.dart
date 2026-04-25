@@ -46,13 +46,10 @@ class _TtsControlWidgetState extends State<TtsControlWidget> {
   Widget build(BuildContext context) {
     return Card(
       color: Colors.white,
-      elevation: 3,
+      elevation: 1.5, // Softer shadow
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: AppColors.primary.withOpacity(0.08),
-          width: 1.2,
-        ),
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide.none, // No border
       ),
       clipBehavior: Clip.antiAlias,
       child: Padding(
