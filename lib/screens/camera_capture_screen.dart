@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
+import 'package:smart_lecture_notes/screens/capture_create_notes_screen.dart';
 
 class CameraCaptureScreen extends StatefulWidget {
   const CameraCaptureScreen({Key? key}) : super(key: key);
@@ -14,8 +17,10 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
   static const String _captureHeroTag = 'capture_board_hero';
 
   CameraController? _cameraController;
+  final TextRecognizer _textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
   bool _isCameraInitialized = false;
   bool _isCapturing = false;
+  bool _isProcessingOcr = false;
 
   @override
   void initState() {
@@ -51,27 +56,53 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
     }
   }
 
+  Future<String> extractTextFromImage(File imageFile) async {
+    final inputImage = InputImage.fromFile(imageFile);
+    final recognizedText = await _textRecognizer.processImage(inputImage);
+    return recognizedText.text;
+  }
+
   Future<void> _captureImage() async {
-    if (_isCapturing || _cameraController == null) return;
+    if (_isCapturing || _isProcessingOcr || _cameraController == null) return;
 
     try {
       setState(() => _isCapturing = true);
 
-      await _cameraController!.takePicture();
+      final image = await _cameraController!.takePicture();
 
-      setState(() => _isCapturing = false);
+      setState(() {
+        _isCapturing = false;
+        _isProcessingOcr = true;
+      });
 
-      Get.snackbar(
-        'Success',
-        'Image captured successfully!',
-        backgroundColor: AppColors.primary,
-        colorText: Colors.white,
-      );
+      final String extractedText = await extractTextFromImage(File(image.path));
 
-      // TODO: Navigate to image preview or processing screen
-      // Get.to(() => ImageProcessingScreen(imagePath: image.path));
+      setState(() {
+        _isProcessingOcr = false;
+      });
+
+      if (extractedText.trim().isEmpty) {
+        Get.snackbar(
+          'No text detected',
+          'No text detected. Please try again.',
+          backgroundColor: AppColors.primary,
+          colorText: Colors.white,
+        );
+      } else {
+        Get.snackbar(
+          'Success',
+          'Text extracted successfully!',
+          backgroundColor: AppColors.primary,
+          colorText: Colors.white,
+        );
+        
+        Get.to(() => const CaptureCreateNotesScreen(), arguments: extractedText);
+      }
     } catch (e) {
-      setState(() => _isCapturing = false);
+      setState(() {
+        _isCapturing = false;
+        _isProcessingOcr = false;
+      });
       Get.snackbar(
         'Capture Failed',
         'Error capturing image: $e',
@@ -84,6 +115,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
   @override
   void dispose() {
     _cameraController?.dispose();
+    _textRecognizer.close();
     super.dispose();
   }
 
@@ -160,7 +192,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
                       child: Row(
                         children: [
                           InkWell(
-                            onTap: () => Get.back(),
+                            onTap: _isProcessingOcr ? null : () => Get.back(),
                             borderRadius: BorderRadius.circular(14),
                             child: Ink(
                               width: 40,
@@ -297,7 +329,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
                 child: Column(
                   children: [
                     GestureDetector(
-                      onTap: _isCapturing ? null : _captureImage,
+                      onTap: (_isCapturing || _isProcessingOcr) ? null : _captureImage,
                       child: Container(
                         width: 80,
                         height: 80,
@@ -312,7 +344,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
                             ),
                           ],
                         ),
-                        child: _isCapturing
+                        child: (_isCapturing || _isProcessingOcr)
                             ? const Center(
                                 child: SizedBox(
                                   width: 40,
@@ -339,7 +371,9 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      _isCapturing ? 'Capturing...' : 'Tap to capture',
+                      _isProcessingOcr 
+                          ? 'Extracting text...' 
+                          : (_isCapturing ? 'Capturing...' : 'Tap to capture'),
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 14,
@@ -383,6 +417,27 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
               ),
             ),
           ),
+
+          // Loading Overlay
+          if (_isProcessingOcr)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black54,
+                child: const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(color: AppColors.primaryLight),
+                      SizedBox(height: 16),
+                      Text(
+                        'Extracting text...',
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

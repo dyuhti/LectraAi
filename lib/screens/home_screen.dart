@@ -2,7 +2,13 @@ import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:smart_lecture_notes/routes/page_transitions.dart';
+import 'package:smart_lecture_notes/screens/preview_text_screen.dart';
 import 'package:smart_lecture_notes/routes/app_routes.dart';
+import 'package:smart_lecture_notes/services/api_service.dart';
+import 'package:smart_lecture_notes/services/ocr_service.dart';
+import 'package:smart_lecture_notes/services/ai_service.dart';
+import 'package:smart_lecture_notes/widgets/tts_control_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -23,6 +29,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   late final AnimationController _ambient;
   late final AnimationController _shimmer;
+  final TranscriptionApiService _apiService = TranscriptionApiService();
+
+  bool _isScanning = false;
+  bool _accessibilityModeEnabled = false;
+  String _selectedText = '';
 
   @override
   void initState() {
@@ -38,10 +49,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     )..repeat();
   }
 
+
+
   @override
   void dispose() {
     _ambient.dispose();
     _shimmer.dispose();
+    _apiService.dispose();
     super.dispose();
   }
 
@@ -52,82 +66,341 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     return Scaffold(
       backgroundColor: _bg,
-      body: SafeArea(
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            SliverPadding(
-              padding: EdgeInsets.fromLTRB(padding, 20, padding, 28),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate(
-                  [
-                    _TopHeader(
-                      onSettings: () =>
-                          Navigator.of(context).pushNamed(AppRoutes.settings),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Your AI-powered lecture companion',
-                      style: TextStyle(
-                        color: _subtle,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+      body: Stack(
+        children: [
+          SafeArea(
+            child: SelectionArea(
+              onSelectionChanged: (selectedContent) {
+                final selected = selectedContent?.plainText.trim() ?? '';
+                if (_selectedText == selected) return;
+                setState(() {
+                  _selectedText = selected;
+                });
+              },
+              child: CustomScrollView(
+                physics: const BouncingScrollPhysics(),
+                slivers: [
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(padding, 20, padding, 28),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate(
+                        [
+                          _TopHeader(
+                            onSettings: () =>
+                                Navigator.of(context).pushNamed(AppRoutes.settings),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Your AI-powered lecture companion',
+                            style: TextStyle(
+                              color: _subtle,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          _AccessibilityToggleCard(
+                            enabled: _accessibilityModeEnabled,
+                            onChanged: _onAccessibilityModeChanged,
+                            selectedText: _selectedText,
+                          ),
+                          const SizedBox(height: 18),
+                          _FadeInOnBuild(
+                            delay: const Duration(milliseconds: 50),
+                            child: _HomeHeroCard(
+                              heroTag: _heroTag,
+                              ambient: _ambient,
+                              shimmer: _shimmer,
+                              navy: _navy,
+                              royal: _royal,
+                              radius: _radius,
+                              onTap: () => Navigator.of(context)
+                                  .pushNamed(AppRoutes.captureNotes),
+                            ),
+                          ),
+                          const SizedBox(height: 22),
+                          _FadeInOnBuild(
+                            delay: const Duration(milliseconds: 130),
+                            child: _QuickCaptureHorizontalCard(
+                              navy: _navy,
+                              royal: _royal,
+                              radius: _radius,
+                              onTap: _handleQuickCaptureTap,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          _FadeInOnBuild(
+                            delay: const Duration(milliseconds: 200),
+                            child: _ViewNotesLayeredCard(
+                              navy: _navy,
+                              royal: _royal,
+                              radius: _radius,
+                              onTap: () =>
+                                  Navigator.of(context).pushNamed(AppRoutes.viewNotes),
+                            ),
+                          ),
+                          const SizedBox(height: 22),
+                          const _FadeInOnBuild(
+                            delay: Duration(milliseconds: 260),
+                            child: _TodayProgressCard(
+                              navy: _navy,
+                              royal: _royal,
+                              radius: _radius,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 18),
-
-                    _FadeInOnBuild(
-                      delay: const Duration(milliseconds: 50),
-                      child: _HomeHeroCard(
-                        heroTag: _heroTag,
-                        ambient: _ambient,
-                        shimmer: _shimmer,
-                        navy: _navy,
-                        royal: _royal,
-                        radius: _radius,
-                        onTap: () =>
-                            Navigator.of(context).pushNamed(AppRoutes.captureNotes),
-                      ),
-                    ),
-
-                    const SizedBox(height: 22),
-                    _FadeInOnBuild(
-                      delay: const Duration(milliseconds: 130),
-                      child: _QuickCaptureHorizontalCard(
-                        navy: _navy,
-                        royal: _royal,
-                        radius: _radius,
-                        onTap: () =>
-                            Navigator.of(context).pushNamed(AppRoutes.smartCamera),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-                    _FadeInOnBuild(
-                      delay: const Duration(milliseconds: 200),
-                      child: _ViewNotesLayeredCard(
-                        navy: _navy,
-                        royal: _royal,
-                        radius: _radius,
-                        onTap: () =>
-                            Navigator.of(context).pushNamed(AppRoutes.viewNotes),
-                      ),
-                    ),
-
-                    const SizedBox(height: 22),
-                    const _FadeInOnBuild(
-                      delay: Duration(milliseconds: 260),
-                      child: _TodayProgressCard(
-                        navy: _navy,
-                        royal: _royal,
-                        radius: _radius,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
+          if (_accessibilityModeEnabled)
+            Positioned(
+              right: 16,
+              left: 16,
+              bottom: 16,
+              child: TtsControlWidget(
+                text: _selectedText.isNotEmpty
+                    ? _selectedText
+                    : _buildMainContentSummary(),
+              ),
+            ),
+          if (_isScanning)
+            const Positioned.fill(
+              child: _ScanningOverlay(message: 'Scanning notes...'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleQuickCaptureTap() async {
+    if (_isScanning) return;
+
+    setState(() => _isScanning = true);
+    final ocrService = OcrService();
+
+    try {
+      final ocrResult = await ocrService.captureAndExtractTextFromCamera();
+      if (!mounted || ocrResult == null) return;
+
+      final cleanedText = await _extractTextFromImage(ocrResult);
+
+      final aiService = AiService();
+      final aiResult = await aiService.generateNotes(cleanedText, 'exam');
+
+      if (!mounted) return;
+
+      Navigator.of(context).push(
+        AppPageTransitions.fadeSlide(
+          PreviewTextScreen(
+            originalText: cleanedText,
+            title: aiResult['title']?.toString() ?? 'Generated Notes',
+            content: aiResult['content']?.toString() ?? '',
+            keyPoints: List<String>.from(aiResult['key_points'] ?? []),
+          ),
+        ),
+      );
+    } catch (error) {
+      debugPrint('[OCR] Quick Capture failed: $error');
+      _showSnackbar('No text found. Try again.');
+    } finally {
+      ocrService.dispose();
+      if (mounted) {
+        setState(() => _isScanning = false);
+      }
+    }
+  }
+
+  Future<String> _extractTextFromImage(OcrScanResult capturedImage) async {
+    try {
+      final response = await _apiService.processImage(
+        imageBase64: capturedImage.imageBase64,
+      );
+      final text = (response['text'] ?? '').toString().trim();
+      if (text.isNotEmpty) {
+        return text;
+      }
+    } catch (e) {
+      debugPrint('[VISION] Quick Capture vision failed: $e');
+      if (mounted) {
+        _showSnackbar('Vision failed. You can retry in preview.');
+      }
+    }
+
+    return 'Unable to read text right now. Tap Retry Vision in preview.';
+  }
+
+  void _onAccessibilityModeChanged(bool enabled) {
+    setState(() {
+      _accessibilityModeEnabled = enabled;
+    });
+  }
+
+
+
+  String _buildMainContentSummary() {
+    return 'Smart Notes. Your AI-powered lecture companion. '
+        'Capture and create notes. Quick capture. View notes. '
+        'Today study progress includes three notes created, two images captured, and one quiz generated.';
+  }
+
+  void _showSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+}
+
+class _AccessibilityToggleCard extends StatelessWidget {
+  const _AccessibilityToggleCard({
+    required this.enabled,
+    required this.onChanged,
+    required this.selectedText,
+  });
+
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+  final String selectedText;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasSelection = selectedText.trim().isNotEmpty;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: _HomeScreenState._navy.withOpacity(enabled ? 0.20 : 0.08),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _HomeScreenState._royal.withOpacity(0.10),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: _HomeScreenState._royal.withOpacity(0.10),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Center(
+              child: Text(
+                '🔊',
+                style: TextStyle(fontSize: 18),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Accessibility Mode (Text-to-Speech)',
+                  style: TextStyle(
+                    color: _HomeScreenState._navy,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  hasSelection
+                      ? 'Selected text is ready to read'
+                      : 'Select text, or press play to read this page',
+                  style: const TextStyle(
+                    color: _HomeScreenState._subtle,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Transform.scale(
+            scale: 0.9,
+            child: Switch(
+              value: enabled,
+              onChanged: onChanged,
+              activeColor: _HomeScreenState._navy,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+
+
+
+class _ScanningOverlay extends StatelessWidget {
+  const _ScanningOverlay({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: ColoredBox(
+        color: Color(0x55000000),
+        child: Center(
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.96, end: 1.04),
+            duration: const Duration(milliseconds: 900),
+            curve: Curves.easeInOut,
+            builder: (context, scale, child) {
+              return Transform.scale(scale: scale, child: child);
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.12),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2.2),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    message,
+                    style: const TextStyle(
+                      color: _HomeScreenState._navy,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

@@ -3,6 +3,7 @@ import tempfile
 import logging
 import json
 import re
+import base64
 import secrets
 import smtplib
 from typing import Optional
@@ -10,7 +11,7 @@ from datetime import datetime, timedelta
 from email.message import EmailMessage
 from pathlib import Path
 from dotenv import load_dotenv
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -18,6 +19,7 @@ import bcrypt
 import requests
 from pymongo import MongoClient
 from bson.objectid import ObjectId
+import google.generativeai as genai
 
 # Load environment variables from backend/.env regardless of current working directory
 BASE_DIR = Path(__file__).resolve().parent
@@ -43,6 +45,7 @@ print("LOADED API KEY:", GROQ_API_KEY)
 GROQ_ENDPOINT = "https://api.groq.com/openai/v1/audio/transcriptions"
 GROQ_CHAT_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_CHAT_MODEL = os.getenv("GROQ_CHAT_MODEL", "llama-3.1-8b-instant")
+GROQ_VISION_MODEL = os.getenv("GROQ_VISION_MODEL", "llama-3.2-11b-vision-preview")
 
 # MongoDB Configuration
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/smartnotes")
@@ -71,6 +74,15 @@ OTP_EMAIL_ENABLED = os.getenv("OTP_EMAIL_ENABLED", "true").strip().lower() in {
 
 class ProcessTranscriptRequest(BaseModel):
     text: str
+
+
+class ProcessImageRequest(BaseModel):
+    imageBase64: str
+
+
+class GenerateNotesRequest(BaseModel):
+    text: str
+    mode: str = "exam"
 
 
 class SaveTranscriptRequest(BaseModel):
@@ -790,6 +802,320 @@ async def process_transcript(payload: ProcessTranscriptRequest):
         return JSONResponse(
             status_code=500,
             content=_empty_process_response("Failed to process transcript"),
+        )
+
+
+async def generate_notes_with_gemini(text: str, mode: str, is_retry: bool = False) -> dict:
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    if not gemini_key:
+        raise ValueError("GEMINI_API_KEY not configured")
+        
+    genai.configure(api_key=gemini_key)
+    
+    # We do NOT use response_mime_type="application/json" here because the prompt instructs returning JSON
+    # and sometimes strict JSON mode can interfere if we rely on custom cleaning. 
+    # But since the prompt requests STRICT JSON STRING, it's safer to keep the generation config unless it fails.
+    # Actually, we will keep it to enforce JSON response structure.
+    model = genai.GenerativeModel(
+        model_name="gemini-1.5-flash",
+        system_instruction="You are an AI tutor.",
+        generation_config={
+            "response_mime_type": "application/json",
+            "temperature": 0.3
+        }
+    )
+    
+    mode_instructions = {
+        "beginner": "- very simple language\n- short sentences\n- explain concepts clearly\n- include small examples",
+        "exam": "- concise\n- key points only\n- revision focused\n- no extra explanation",
+        "panic": "- ultra short\n- step-by-step instructions\n- no extra words\n- maximum clarity",
+        "accessible": "- extremely simple language\n- no jargon\n- very short sentences\n- easy to understand for low literacy users\n- structured and clear"
+    }
+    
+    instruction = mode_instructions.get(mode, mode_instructions["exam"])
+    
+    prompt = f"""Adapt the content based on the user's mode.
+
+Mode: {mode}
+
+Instructions:
+{instruction}
+
+Return ONLY valid JSON.
+Do NOT include markdown or extra text.
+
+FORMAT:
+{{
+  "title": "short title",
+  "content": "main explanation",
+  "key_points": ["point1", "point2", "point3"]
+}}
+
+Content:
+{text}"""
+
+    try:
+        response = await model.generate_content_async(prompt)
+        response_text = response.text.strip()
+        
+        # JSON Cleaning
+        if response_text.startswith("```json"):
+            response_text = response_text[7:]
+        if response_text.startswith("```"):
+            response_text = response_text[3:]
+        if response_text.endswith("```"):
+            response_text = response_text[:-3]
+            
+        response_text = response_text.strip()
+        return json.loads(response_text)
+    except Exception as e:
+        if not is_retry:
+            logger.warning(f"[GENERATE_NOTES] JSON parsing failed, retrying... Error: {e}")
+            return await generate_notes_with_gemini(text, mode, is_retry=True)
+        else:
+            logger.error(f"[GENERATE_NOTES] Retry failed. Returning fallback JSON. Error: {e}")
+            return {
+                "title": "Notes Unavailable",
+                "content": "We couldn't generate notes at this time due to a parsing error. Please try again.",
+                "key_points": []
+            }
+
+
+@app.post("/generate-notes")
+async def generate_notes_endpoint(payload: GenerateNotesRequest):
+    if not payload.text or not payload.text.strip():
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Text is required and cannot be empty"}
+        )
+
+    logger.info(f"[GENERATE_NOTES] MODE: {payload.mode}")
+    print(f"[GENERATE_NOTES] MODE: {payload.mode}")  # visible in terminal
+
+    try:
+        result = await generate_notes_with_gemini(payload.text, payload.mode)
+        return JSONResponse(status_code=200, content=result)
+    except Exception as e:
+        logger.error(f"[GENERATE_NOTES] Exception: {str(e)}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+
+@app.post("/process-ocr-text")
+async def process_ocr_text(payload: ProcessTranscriptRequest):
+    """
+    Clean and structure OCR output (especially handwriting) using Groq Chat API.
+
+    Input:
+        {"text": "raw OCR text"}
+    """
+    if not GROQ_API_KEY:
+        logger.error("[PROCESS_OCR_TEXT] GROQ_API_KEY not set")
+        return JSONResponse(
+            status_code=500,
+            content=_empty_process_response("GROQ_API_KEY not configured"),
+        )
+
+    if not payload.text or not payload.text.strip():
+        return JSONResponse(
+            status_code=400,
+            content=_empty_process_response("Text is required"),
+        )
+
+    prompt = (
+        "You are given OCR text extracted from handwritten notes.\\n\\n"
+        "The OCR may contain: broken words, missing spaces, wrong spellings, random layout noise, "
+        "labels like Date:, and orientation artifacts.\\n\\n"
+        "Your job:\\n"
+        "1. Reconstruct meaningful sentences from the OCR text\\n"
+        "2. Fix spelling and grammar\\n"
+        "3. Merge split words and split merged words\\n"
+        "4. Remove irrelevant noise and metadata labels when not part of content\\n"
+        "5. Preserve original meaning and technical terms\\n\\n"
+        "Rules:\\n"
+        "* Do not invent facts\\n"
+        "* If uncertain, prefer the most likely classroom meaning\\n"
+        "* Keep output concise and readable\\n\\n"
+        "Return strict JSON in this format:\\n"
+        "{\\n"
+        '"clean_text": "...",\\n'
+        '"summary": "...",\\n'
+        '"key_points": ["...", "..."]\\n'
+        "}\\n\\n"
+        "OCR Text:\\n"
+        f"{payload.text}"
+    )
+
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    body = {
+        "model": GROQ_CHAT_MODEL,
+        "messages": [
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 0.1,
+    }
+
+    try:
+        logger.debug("[PROCESS_OCR_TEXT] Sending to Groq chat completion API...")
+        response = requests.post(
+            GROQ_CHAT_ENDPOINT,
+            headers=headers,
+            json=body,
+            timeout=45,
+        )
+
+        logger.debug(f"[PROCESS_OCR_TEXT] Groq response status: {response.status_code}")
+
+        if response.status_code != 200:
+            logger.error(f"[PROCESS_OCR_TEXT] Groq error: {response.text}")
+            return JSONResponse(
+                status_code=response.status_code,
+                content=_empty_process_response("Groq API failed"),
+            )
+
+        result = response.json()
+        choices = result.get("choices", [])
+        if not choices:
+            raise ValueError("Missing choices in Groq response")
+
+        message = choices[0].get("message", {})
+        content = message.get("content", "")
+        if not content:
+            raise ValueError("Empty content in Groq response")
+
+        parsed = _extract_json_object(content)
+        normalized = _normalize_process_response(parsed)
+        return JSONResponse(normalized)
+
+    except Exception as e:
+        logger.error(f"[PROCESS_OCR_TEXT] Exception: {str(e)}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content=_empty_process_response("Failed to process OCR text"),
+        )
+
+
+@app.post("/process-image")
+async def process_image(request: Request, file: Optional[UploadFile] = File(default=None)):
+    """
+    Extract and clean text directly from image using Groq Vision.
+
+    Accepts:
+      - Multipart: file=<image>
+      - JSON: {"imageBase64": "..."}
+    """
+    if not GROQ_API_KEY:
+        logger.error("[PROCESS_IMAGE] GROQ_API_KEY not set")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "GROQ_API_KEY not configured", "text": ""},
+        )
+
+    image_base64 = ""
+    image_mime = "image/jpeg"
+
+    try:
+        if file is not None:
+            content = await file.read()
+            if not content:
+                return JSONResponse(
+                    status_code=400,
+                    content={"error": "Empty image file", "text": ""},
+                )
+            image_base64 = base64.b64encode(content).decode("utf-8")
+            image_mime = file.content_type or "image/jpeg"
+        else:
+            payload = await request.json()
+            image_base64 = str(payload.get("imageBase64", "")).strip()
+            if image_base64.startswith("data:") and "," in image_base64:
+                header, raw = image_base64.split(",", 1)
+                image_base64 = raw
+                mime_match = re.match(r"data:([^;]+);base64", header)
+                if mime_match:
+                    image_mime = mime_match.group(1)
+
+        if not image_base64:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Image payload is required", "text": ""},
+            )
+    except Exception as e:
+        logger.error(f"[PROCESS_IMAGE] Invalid request payload: {e}")
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Invalid image payload", "text": ""},
+        )
+
+    prompt = (
+        "You are given an image of handwritten or printed notes.\\n\\n"
+        "Your tasks:\\n"
+        "1. Extract all readable text from the image.\\n"
+        "2. Correct OCR errors (spelling, spacing, broken words).\\n"
+        "3. Reconstruct proper sentences.\\n"
+        "4. Ignore noise like lines, borders, or irrelevant symbols.\\n"
+        "5. Preserve meaning exactly.\\n\\n"
+        "Return ONLY clean readable text."
+    )
+
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    body = {
+        "model": GROQ_VISION_MODEL,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:{image_mime};base64,{image_base64}",
+                        },
+                    },
+                ],
+            }
+        ],
+        "temperature": 0.1,
+        "max_tokens": 1200,
+    }
+
+    try:
+        logger.debug("[PROCESS_IMAGE] Sending image to Groq Vision...")
+        response = requests.post(
+            GROQ_CHAT_ENDPOINT,
+            headers=headers,
+            json=body,
+            timeout=60,
+        )
+
+        logger.debug(f"[PROCESS_IMAGE] Groq response status: {response.status_code}")
+
+        if response.status_code != 200:
+            logger.error(f"[PROCESS_IMAGE] Groq error: {response.text}")
+            return JSONResponse(
+                status_code=response.status_code,
+                content={"error": "Groq Vision API failed", "text": ""},
+            )
+
+        result = response.json()
+        choices = result.get("choices", [])
+        if not choices:
+            raise ValueError("Missing choices in Groq response")
+
+        content = str(choices[0].get("message", {}).get("content", "")).strip()
+        return JSONResponse({"text": content})
+    except Exception as e:
+        logger.error(f"[PROCESS_IMAGE] Exception: {str(e)}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to process image", "text": ""},
         )
 
 

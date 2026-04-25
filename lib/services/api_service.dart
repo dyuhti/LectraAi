@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
@@ -88,6 +89,86 @@ class TranscriptionApiService {
       return data;
     } catch (e) {
       print('[API] PROCESS TRANSCRIPT EXCEPTION: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> processOcrText(String text) async {
+    try {
+      print('[API] Processing OCR text length: ${text.length}');
+      print('[API] Backend URL: $_baseUrl/process-ocr-text');
+
+      final response = await _client
+          .post(
+            Uri.parse('$_baseUrl/process-ocr-text'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'text': text}),
+          )
+          .timeout(const Duration(seconds: 60));
+
+      print('[API] OCR response status: ${response.statusCode}');
+      print('[API] OCR response body: ${response.body}');
+
+      final data = jsonDecode(response.body);
+      if (data is! Map<String, dynamic>) {
+        throw Exception('Invalid OCR processing response');
+      }
+
+      if (response.statusCode != 200) {
+        final errorMessage = data['error'] ?? 'OCR text processing failed';
+        throw Exception(errorMessage);
+      }
+
+      return data;
+    } catch (e) {
+      print('[API] PROCESS OCR TEXT EXCEPTION: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> processImage({
+    String? filePath,
+    String? imageBase64,
+  }) async {
+    try {
+      var payloadBase64 = imageBase64?.trim() ?? '';
+
+      if (payloadBase64.isEmpty && filePath != null && filePath.isNotEmpty) {
+        final bytes = await File(filePath).readAsBytes();
+        payloadBase64 = base64Encode(bytes);
+      }
+
+      if (payloadBase64.isEmpty) {
+        throw Exception('Image data is required');
+      }
+
+      print('[API] Processing image via Vision, bytes(base64): ${payloadBase64.length}');
+      print('[API] Backend URL: $_baseUrl/process-image');
+
+      final response = await _client
+          .post(
+            Uri.parse('$_baseUrl/process-image'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'imageBase64': payloadBase64}),
+          )
+          .timeout(const Duration(seconds: 90));
+
+      print('[API] Vision response status: ${response.statusCode}');
+      print('[API] Vision response body: ${response.body}');
+
+      final data = jsonDecode(response.body);
+      if (data is! Map<String, dynamic>) {
+        throw Exception('Invalid image processing response');
+      }
+
+      if (response.statusCode != 200) {
+        final errorMessage = data['error'] ?? 'Image processing failed';
+        throw Exception(errorMessage);
+      }
+
+      return data;
+    } catch (e) {
+      print('[API] PROCESS IMAGE EXCEPTION: $e');
       rethrow;
     }
   }

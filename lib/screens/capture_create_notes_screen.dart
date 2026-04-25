@@ -2,10 +2,19 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:smart_lecture_notes/routes/app_routes.dart';
+import 'package:smart_lecture_notes/routes/page_transitions.dart';
+import 'package:smart_lecture_notes/screens/preview_text_screen.dart';
+import 'package:smart_lecture_notes/services/api_service.dart';
+import 'package:smart_lecture_notes/services/ocr_service.dart';
+import 'package:smart_lecture_notes/services/ai_service.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 class CaptureCreateNotesScreen extends StatefulWidget {
-  const CaptureCreateNotesScreen({Key? key}) : super(key: key);
+  final String? extractedText;
+  
+  const CaptureCreateNotesScreen({this.extractedText, Key? key}) : super(key: key);
 
   @override
   State<CaptureCreateNotesScreen> createState() =>
@@ -25,6 +34,18 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
   static const double _radius = 24;
 
   late final AnimationController _ambient;
+  final TranscriptionApiService _apiService = TranscriptionApiService();
+  final AiService _aiService = AiService();
+  bool _isScanning = false;
+  
+  // OCR Editor State
+  late final TextEditingController _textController;
+  bool _isGeneratingNotes = false;
+  
+  // Speech to Text State
+  late final stt.SpeechToText _speechToText;
+  bool _isListening = false;
+  String _textBeforeListening = '';
 
   @override
   void initState() {
@@ -33,16 +54,198 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1400),
     )..repeat();
+    
+    _textController = TextEditingController(text: widget.extractedText ?? '');
+    _speechToText = stt.SpeechToText();
   }
 
   @override
   void dispose() {
     _ambient.dispose();
+    _apiService.dispose();
+    _textController.dispose();
+    if (_isListening) _speechToText.stop();
     super.dispose();
+  }
+
+  void _listen() async {
+    if (!_isListening) {
+      bool available = await _speechToText.initialize(
+        onStatus: (status) {
+          if (status == 'done' || status == 'notListening') {
+            if (mounted) setState(() => _isListening = false);
+          }
+        },
+        onError: (error) {
+          if (mounted) setState(() => _isListening = false);
+        },
+      );
+      
+      if (available) {
+        setState(() {
+          _isListening = true;
+          _textBeforeListening = _textController.text;
+        });
+        _speechToText.listen(
+          onResult: (result) {
+            if (!mounted) return;
+            setState(() {
+              final separator = _textBeforeListening.isNotEmpty && !_textBeforeListening.endsWith(' ') && !_textBeforeListening.endsWith('\n') ? ' ' : '';
+              _textController.text = _textBeforeListening + separator + result.recognizedWords;
+              _textController.selection = TextSelection.fromPosition(TextPosition(offset: _textController.text.length));
+            });
+          },
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Speech recognition not available on this device.')),
+        );
+      }
+    } else {
+      setState(() => _isListening = false);
+      _speechToText.stop();
+    }
+  }
+
+  Future<void> _generateNotes() async {
+    final text = _textController.text.trim();
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter text')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isGeneratingNotes = true;
+    });
+
+    try {
+      final summary = await _aiService.generateNotes(text, 'exam');
+      
+      setState(() {
+        _isGeneratingNotes = false;
+      });
+
+      // Pass the original text and the new structured fields to the PreviewTextScreen
+      Get.to(() => PreviewTextScreen(
+        originalText: text,
+        title: summary['title']?.toString() ?? 'Generated Notes',
+        content: summary['content']?.toString() ?? '',
+        keyPoints: List<String>.from(summary['key_points'] ?? []),
+      ));
+    } catch (e) {
+      setState(() {
+        _isGeneratingNotes = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to generate notes: $e')),
+      );
+    }
+  }
+
+  Widget _buildOcrEditorView() {
+    return Scaffold(
+      backgroundColor: _bg,
+      appBar: AppBar(
+        title: const Text('Edit extracted text', style: TextStyle(color: _navy, fontSize: 18, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: _navy),
+        centerTitle: true,
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Stack(
+                    children: [
+                      TextField(
+                        controller: _textController,
+                        maxLines: null,
+                        expands: true,
+                        textAlignVertical: TextAlignVertical.top,
+                        decoration: const InputDecoration(
+                          hintText: 'Review and edit extracted text...',
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.only(left: 20, top: 20, right: 20, bottom: 80),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 16,
+                        right: 16,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _isListening ? Colors.red : _royal.withOpacity(0.1),
+                            boxShadow: _isListening ? [
+                              BoxShadow(color: Colors.red.withOpacity(0.4), blurRadius: 15, spreadRadius: 5)
+                            ] : [],
+                          ),
+                          child: IconButton(
+                            icon: Icon(
+                              _isListening ? Icons.mic : Icons.mic_none,
+                              color: _isListening ? Colors.white : _royal,
+                            ),
+                            onPressed: _listen,
+                            tooltip: _isListening ? 'Stop listening' : 'Start voice typing',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _isGeneratingNotes ? null : _generateNotes,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _royal,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 2,
+                ),
+                child: _isGeneratingNotes
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                      )
+                    : const Text(
+                        'Generate Notes',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.extractedText != null) {
+      return _buildOcrEditorView();
+    }
     final width = MediaQuery.sizeOf(context).width;
     final horizontalPadding = width < 380 ? 18.0 : 24.0;
     final heroHeight = width < 380 ? 200.0 : 220.0;
@@ -64,7 +267,7 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
           height: heroHeight,
           child: _HeroCaptureCard(
             heroTag: _captureHeroTag,
-            onTap: () => Navigator.of(context).pushNamed(AppRoutes.smartCamera),
+            onTap: _handleCaptureBoardTap,
             navy: _navy,
             royal: _royal,
             radius: _radius,
@@ -167,22 +370,150 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
         ),
         centerTitle: false,
       ),
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          SliverPadding(
-            padding: EdgeInsets.symmetric(
-              horizontal: horizontalPadding,
-              vertical: 16,
+      body: Stack(
+        children: [
+          CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              SliverPadding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: horizontalPadding,
+                  vertical: 16,
+                ),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => items[index],
+                    childCount: items.length,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (_isScanning)
+            const Positioned.fill(
+              child: _CaptureScanningOverlay(message: 'Scanning notes...'),
             ),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) => items[index],
-                childCount: items.length,
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleCaptureBoardTap() async {
+    if (_isScanning) return;
+
+    setState(() => _isScanning = true);
+    final ocrService = OcrService();
+
+    try {
+      final ocrResult = await ocrService.captureAndExtractTextFromCamera();
+      if (!mounted || ocrResult == null) return;
+
+      final cleanedText = await _extractTextFromImage(ocrResult);
+
+      final aiResult = await _aiService.generateNotes(cleanedText, 'exam');
+
+      if (!mounted) return;
+
+      Navigator.of(context).push(
+        AppPageTransitions.fadeSlide(
+          PreviewTextScreen(
+            originalText: cleanedText,
+            title: aiResult['title']?.toString() ?? 'Generated Notes',
+            content: aiResult['content']?.toString() ?? '',
+            keyPoints: List<String>.from(aiResult['key_points'] ?? []),
+          ),
+        ),
+      );
+    } catch (e) {
+      print('[OCR] Capture Board Image failed: $e');
+      _showSnackbar('No text found. Try again.');
+    } finally {
+      ocrService.dispose();
+      if (mounted) {
+        setState(() => _isScanning = false);
+      }
+    }
+  }
+
+  Future<String> _extractTextFromImage(OcrScanResult capturedImage) async {
+    try {
+      final response = await _apiService.processImage(
+        imageBase64: capturedImage.imageBase64,
+      );
+      final text = (response['text'] ?? '').toString().trim();
+      if (text.isNotEmpty) {
+        return text;
+      }
+    } catch (e) {
+      print('[VISION] Image processing failed, using fallback text: $e');
+      if (mounted) {
+        _showSnackbar('Vision failed. You can retry from preview.');
+      }
+    }
+
+    return 'Unable to read text right now. Tap Retry Vision in preview.';
+  }
+
+  void _showSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+}
+
+class _CaptureScanningOverlay extends StatelessWidget {
+  const _CaptureScanningOverlay({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: ColoredBox(
+        color: const Color(0x55000000),
+        child: Center(
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.96, end: 1.04),
+            duration: const Duration(milliseconds: 900),
+            curve: Curves.easeInOut,
+            builder: (context, scale, child) {
+              return Transform.scale(scale: scale, child: child);
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.12),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2.2),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    message,
+                    style: const TextStyle(
+                      color: _CaptureCreateNotesScreenState._navy,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -242,25 +573,40 @@ class _FlowHintRow extends StatelessWidget {
       );
     }
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          step('Capture'),
-          const SizedBox(width: 10),
-          const Icon(Icons.chevron_right, size: 16, color: color),
-          const SizedBox(width: 10),
-          step('Process'),
-          const SizedBox(width: 10),
-          const Icon(Icons.chevron_right, size: 16, color: color),
-          const SizedBox(width: 10),
-          step('Practice'),
-          const SizedBox(width: 10),
-          const Icon(Icons.chevron_right, size: 16, color: color),
-          const SizedBox(width: 10),
-          step('Insights'),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              step('Capture'),
+              const SizedBox(width: 10),
+              const Icon(Icons.chevron_right, size: 16, color: color),
+              const SizedBox(width: 10),
+              step('Process'),
+              const SizedBox(width: 10),
+              const Icon(Icons.chevron_right, size: 16, color: color),
+              const SizedBox(width: 10),
+              step('Practice'),
+              const SizedBox(width: 10),
+              const Icon(Icons.chevron_right, size: 16, color: color),
+              const SizedBox(width: 10),
+              step('Insights'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          'Tips: Hold phone straight, keep text horizontal, use good lighting, avoid shadows.',
+          style: TextStyle(
+            color: color,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            height: 1.3,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -570,7 +916,7 @@ class _HeroCaptureCardState extends State<_HeroCaptureCard>
                               const SizedBox(height: 4),
                               Flexible(
                                 child: Text(
-                                  'Scan classroom board with AI-powered OCR',
+                                  'Scan handwritten board notes with AI OCR',
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(

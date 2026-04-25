@@ -11,7 +11,7 @@ class AuthService {
 
   static const String _baseUrl = String.fromEnvironment(
     'AUTH_BASE_URL',
-    defaultValue: 'http://10.0.2.2:5001/api/auth',
+    defaultValue: 'http://192.168.0.191:5001/api/auth',
   );
 
   String? lastError;

@@ -10,10 +10,12 @@ import 'package:smart_lecture_notes/theme/app_theme.dart';
 class AudioTranscriptScreen extends StatefulWidget {
   final String? transcript;
   final Map<String, dynamic>? summary;
+  final String sourceLabel;
 
   const AudioTranscriptScreen({
     this.transcript,
     this.summary,
+    this.sourceLabel = 'AI Notes',
     Key? key,
   }) : super(key: key);
 
@@ -63,7 +65,7 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
     if (transcript.isEmpty) {
       Get.snackbar(
         'Error',
-        'No transcript to save',
+        'No AI notes to save',
         backgroundColor: Colors.red.withValues(alpha: 0.8),
         colorText: Colors.white,
         duration: const Duration(seconds: 2),
@@ -76,7 +78,7 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
     });
 
     try {
-      print('[TRANSCRIPT] Saving note with transcript length: ${transcript.length}');
+      print('[AI_NOTES] Saving note with text length: ${transcript.length}');
       final summaryData = widget.summary ?? {};
       final summaryText = _safeString(summaryData['summary']);
       final existingKeyPoints = _normalizeKeyPoints(
@@ -88,7 +90,7 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
         try {
           processed = await _apiService.processTranscript(transcript);
         } catch (e) {
-          print('[TRANSCRIPT] AI processing failed: $e');
+          print('[AI_NOTES] AI processing failed: $e');
         }
       }
 
@@ -110,21 +112,21 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
         title: lectureTitle.isNotEmpty
             ? lectureTitle
             : 'Lecture ${DateTime.now().toString().split(' ')[0]}',
-        subject: 'Lecture Recording',
+        subject: widget.sourceLabel,
         content: cleanedText,
         cleanedText: cleanedText,
-        summary: summary.isNotEmpty ? summary : 'Lecture transcript',
+        summary: summary.isNotEmpty ? summary : 'AI generated notes',
         createdAt: DateTime.now(),
         keyPoints: keyPoints,
       );
 
       await context.read<NoteProvider>().createNote(note);
 
-      print('[TRANSCRIPT] Note saved successfully to Mongo API');
+      print('[AI_NOTES] Note saved successfully to Mongo API');
       
       Get.snackbar(
         'Success',
-        'Lecture saved to your notes',
+        'AI notes saved to your notes',
         backgroundColor: Colors.green.withValues(alpha: 0.8),
         colorText: Colors.white,
         duration: const Duration(seconds: 2),
@@ -139,7 +141,7 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
         MaterialPageRoute(builder: (_) => const MyNotesScreen()),
       );
     } catch (e) {
-      print('[TRANSCRIPT] Error saving note: $e');
+      print('[AI_NOTES] Error saving note: $e');
       if (mounted) {
         Get.snackbar(
           'Error',
@@ -175,7 +177,7 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
           onPressed: () => Get.back(),
         ),
         title: const Text(
-          'Audio Transcript',
+          'AI Notes',
           style: TextStyle(
             color: AppColors.primary,
             fontSize: 18,
@@ -199,7 +201,7 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Text(
-                  'Data Structures',
+                  'AI Notes',
                   style: TextStyle(
                     color: AppColors.primary,
                     fontSize: 11,
@@ -209,9 +211,9 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
               ),
               const SizedBox(height: 24),
 
-              // AI-Generated Summary Section
+              // Summary Section
               const Text(
-                'AI-Generated Summary',
+                'Summary',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -285,9 +287,9 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
                   ],
                 ),
 
-              // Transcript Section
+              // Full notes section
               const Text(
-                'TRANSCRIPT',
+                'FULL CLEANED TEXT',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -306,7 +308,7 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
                     Text(
                       lectureTitle.isNotEmpty
                           ? lectureTitle
-                          : 'Lecture Transcript',
+                          : 'AI Notes',
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
@@ -315,7 +317,7 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      widget.transcript ?? 'No transcript available',
+                      widget.transcript ?? 'No notes available',
                       style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondary,
