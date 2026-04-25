@@ -500,10 +500,9 @@ class _HomeHeroCard extends StatelessWidget {
         decoration: decoration,
         scaleDown: 0.99,
         // In a sliver, children can end up very narrow (e.g., 2-column layouts).
-        // Ensure this hero always has enough height and that its footer row
-        // doesn't overflow on small widths.
+        // Keep enough height for content while avoiding excessive blank space.
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 260),
+          constraints: const BoxConstraints(minHeight: 200),
           child: AspectRatio(
             aspectRatio: 16 / 9,
             child: ClipRRect(
@@ -591,7 +590,7 @@ class _HomeHeroCard extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Text(
-                                    'Capture & Create Notes',
+                                    'Adaptive Notes',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
