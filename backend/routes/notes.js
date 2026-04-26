@@ -7,6 +7,17 @@ const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
+// GET /api/notes - Fetch all notes
+router.get('/', async (req, res) => {
+  try {
+    const notes = await Note.find().sort({ createdAt: -1 });
+    return res.status(200).json(notes);
+  } catch (error) {
+    console.error('Error fetching notes:', error);
+    return res.status(500).json({ error: 'Failed to fetch notes' });
+  }
+});
+
 // GET /api/notes/:userId - Fetch all notes for a specific user
 router.get('/:userId', async (req, res) => {
   try {
