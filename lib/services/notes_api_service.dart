@@ -14,7 +14,7 @@ class NotesApiService {
         _baseUrl = baseUrl ??
             const String.fromEnvironment(
               'NOTES_BASE_URL',
-              defaultValue: 'http://192.168.0.191:5001',
+              defaultValue: 'https://lectraai.onrender.com/api',
             );
 
   final http.Client _client;
@@ -29,8 +29,8 @@ class NotesApiService {
     }
 
     final endpoints = <Uri>[
-      Uri.parse('$_baseUrl/api/notes/${userId.trim()}'),
-      Uri.parse('$_baseUrl/api/notes'),
+      Uri.parse('$_baseUrl/notes/${userId.trim()}'),
+      Uri.parse('$_baseUrl/notes'),
     ];
 
     Exception? lastError;
@@ -80,7 +80,7 @@ class NotesApiService {
     print('[NotesApiService] Sending POST /api/notes/save for userId: ${payload['userId']}');
     final response = await _client
         .post(
-          Uri.parse('$_baseUrl/api/notes/save'),
+          Uri.parse('$_baseUrl/notes/save'),
           headers: _headers(token),
           body: jsonEncode(payload),
         )
@@ -112,7 +112,7 @@ class NotesApiService {
     final token = await _requireToken();
     final response = await _client
         .put(
-          Uri.parse('$_baseUrl/api/notes/${note.id}'),
+          Uri.parse('$_baseUrl/notes/${note.id}'),
           headers: _headers(token),
           body: jsonEncode(note.toJson()),
         )
@@ -138,7 +138,7 @@ class NotesApiService {
     final token = await _requireToken();
     final response = await _client
         .delete(
-          Uri.parse('$_baseUrl/api/notes/$noteId'),
+          Uri.parse('$_baseUrl/notes/$noteId'),
           headers: _headers(token),
         )
         .timeout(const Duration(seconds: 15));

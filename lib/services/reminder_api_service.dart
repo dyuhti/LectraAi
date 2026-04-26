@@ -12,7 +12,7 @@ class ReminderApiService {
         _baseUrl = baseUrl ??
             const String.fromEnvironment(
               'NOTES_BASE_URL',
-              defaultValue: 'http://192.168.0.191:5001',
+              defaultValue: 'https://lectraai.onrender.com/api',
             );
 
   final http.Client _client;
@@ -32,7 +32,7 @@ class ReminderApiService {
     final token = await _authService.getAuthToken();
     print('[ReminderApiService] Sending POST /api/reminders/create for userId: $userId');
     final response = await _client.post(
-      Uri.parse('$_baseUrl/api/reminders/create'),
+      Uri.parse('$_baseUrl/reminders/create'),
       headers: {
         'Content-Type': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
@@ -63,7 +63,7 @@ class ReminderApiService {
 
     final token = await _authService.getAuthToken();
     final response = await _client.get(
-      Uri.parse('$_baseUrl/api/reminders/$userId?upcoming=$upcoming&completed=$completed'),
+      Uri.parse('$_baseUrl/reminders/$userId?upcoming=$upcoming&completed=$completed'),
       headers: {
         'Content-Type': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
@@ -80,7 +80,7 @@ class ReminderApiService {
   Future<void> updateReminder(String id, Map<String, dynamic> updates) async {
     final token = await _authService.getAuthToken();
     final response = await _client.put(
-      Uri.parse('$_baseUrl/api/reminders/$id'),
+      Uri.parse('$_baseUrl/reminders/$id'),
       headers: {
         'Content-Type': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
@@ -96,7 +96,7 @@ class ReminderApiService {
   Future<void> deleteReminder(String id) async {
     final token = await _authService.getAuthToken();
     final response = await _client.delete(
-      Uri.parse('$_baseUrl/api/reminders/$id'),
+      Uri.parse('$_baseUrl/reminders/$id'),
       headers: {
         'Content-Type': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',

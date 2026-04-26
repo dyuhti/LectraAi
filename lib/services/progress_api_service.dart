@@ -13,7 +13,7 @@ class ProgressApiService {
         _baseUrl = baseUrl ??
             const String.fromEnvironment(
               'NOTES_BASE_URL',
-              defaultValue: 'http://192.168.0.191:5001',
+              defaultValue: 'https://lectraai.onrender.com/api',
             );
 
   final http.Client _client;
@@ -29,7 +29,7 @@ class ProgressApiService {
     try {
       final token = await _authService.getAuthToken();
       final response = await _client.get(
-        Uri.parse('$_baseUrl/api/progress/$userId'),
+        Uri.parse('$_baseUrl/progress/$userId'),
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
@@ -57,7 +57,7 @@ class ProgressApiService {
     try {
       final token = await _authService.getAuthToken();
       final response = await _client.get(
-        Uri.parse('$_baseUrl/api/progress/history/$userId'),
+        Uri.parse('$_baseUrl/progress/history/$userId'),
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
@@ -82,7 +82,7 @@ class ProgressApiService {
     try {
       final token = await _authService.getAuthToken();
       final response = await _client.get(
-        Uri.parse('$_baseUrl/api/dashboard/weekly/$userId'),
+        Uri.parse('$_baseUrl/dashboard/weekly/$userId'),
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
@@ -109,7 +109,7 @@ class ProgressApiService {
     try {
       final token = await _authService.getAuthToken();
       final response = await _client.post(
-        Uri.parse('$_baseUrl/api/progress/update'),
+        Uri.parse('$_baseUrl/progress/update'),
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
@@ -136,7 +136,7 @@ class ProgressApiService {
     try {
       final token = await _authService.getAuthToken();
       final response = await _client.post(
-        Uri.parse('$_baseUrl/api/dashboard/sync/$userId'),
+        Uri.parse('$_baseUrl/dashboard/sync/$userId'),
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',

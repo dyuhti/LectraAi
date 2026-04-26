@@ -12,7 +12,7 @@ class AuthService {
 
   static const String _baseUrl = String.fromEnvironment(
     'AUTH_BASE_URL',
-    defaultValue: 'http://192.168.0.191:5001/api/auth',
+    defaultValue: 'https://lectraai.onrender.com/api/auth',
   );
   static const Duration _requestTimeout = Duration(seconds: 8);
 
