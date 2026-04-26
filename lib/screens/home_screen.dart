@@ -376,17 +376,32 @@ class _TopHeader extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // App logo (from assets)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.asset(
-                'assets/images/logo.png',
-                width: 48,
-                height: 48,
-                fit: BoxFit.cover,
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: _HomeScreenState._royal.withOpacity(0.08),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Image.asset(
+                    'assets/logo/home_logo.png',
+                    fit: BoxFit.contain,
+                  ),
+                ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
             const Text(
               'Smart Notes',
               style: TextStyle(
@@ -676,7 +691,7 @@ class _HomeHeroCard extends StatelessWidget {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 18),
+                          const SizedBox(height: 34),
                           Row(
                             children: [
                               Expanded(

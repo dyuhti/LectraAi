@@ -7,6 +7,7 @@ import 'package:smart_lecture_notes/providers/note_provider.dart';
 import 'package:smart_lecture_notes/screens/note_detail_screen.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 import 'package:smart_lecture_notes/utils/tts_text_builder.dart';
+import 'package:smart_lecture_notes/widgets/tts_control_widget.dart';
 
 class NotesScreen extends StatefulWidget {
   const NotesScreen({Key? key}) : super(key: key);
@@ -48,70 +49,83 @@ class _NotesScreenState extends State<NotesScreen> {
         ),
         centerTitle: false,
       ),
-      body: Consumer<NoteProvider>(
-        builder: (context, notesProvider, _) {
-          if (notesProvider.isLoading) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            );
-          }
+      body: Column(
+        children: [
+          Expanded(
+            child: Consumer<NoteProvider>(
+              builder: (context, notesProvider, _) {
+                if (notesProvider.isLoading) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  );
+                }
 
-          if (notesProvider.error != null) {
-            return Center(
-              child: Text(
-                notesProvider.error!,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 14,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            );
-          }
-
-          final notes = notesProvider.notes;
-          if (notes.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.note_outlined,
-                    size: 64,
-                    color: AppColors.primary.withOpacity(0.3),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No notes yet',
-                    style: TextStyle(
-                      color: AppColors.textSecondary.withOpacity(0.7),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
+                if (notesProvider.error != null) {
+                  return Center(
+                    child: Text(
+                      notesProvider.error!,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Upload and process documents to create notes',
-                    style: TextStyle(
-                      color: AppColors.textSecondary.withOpacity(0.5),
-                      fontSize: 13,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            );
-          }
+                  );
+                }
 
-          return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
-            itemCount: notes.length,
-            itemBuilder: (context, index) {
-              final note = notes[index];
-              return _buildNoteCard(context, note);
-            },
-          );
-        },
+                final notes = notesProvider.notes;
+                if (notes.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.note_outlined,
+                          size: 64,
+                          color: AppColors.primary.withOpacity(0.3),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No notes yet',
+                          style: TextStyle(
+                            color: AppColors.textSecondary.withOpacity(0.7),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Upload and process documents to create notes',
+                          style: TextStyle(
+                            color: AppColors.textSecondary.withOpacity(0.5),
+                            fontSize: 13,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+                  itemCount: notes.length,
+                  itemBuilder: (context, index) {
+                    final note = notes[index];
+                    return _buildNoteCard(context, note);
+                  },
+                );
+              },
+            ),
+          ),
+          if (!context.watch<AccessibilityProvider>().isEnabled)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: TtsControlWidget(
+                text: getScreenText(context),
+              ),
+            ),
+        ],
       ),
     );
   }

@@ -23,26 +23,47 @@ class NotesApiService {
 
   Future<List<Note>> fetchNotes() async {
     final token = await _requireToken();
-    final response = await _client
-        .get(
-          Uri.parse('$_baseUrl/api/notes'),
-          headers: _headers(token),
-        )
-        .timeout(const Duration(seconds: 15));
-
-    if (response.statusCode != 200) {
-      throw Exception(_extractError(response.body, 'Failed to load notes'));
+    final userId = await _authService.getUserId();
+    if (userId == null || userId.trim().isEmpty) {
+      throw Exception('User not authenticated. Please log in.');
     }
 
-    final decoded = _decodeJson(response.body);
-    if (decoded is! List) {
-      throw Exception('Invalid notes response');
-    }
+    final endpoints = <Uri>[
+      Uri.parse('$_baseUrl/api/notes/${userId.trim()}'),
+      Uri.parse('$_baseUrl/api/notes'),
+    ];
 
-    return decoded
+    Exception? lastError;
+    for (final endpoint in endpoints) {
+      final response = await _client
+          .get(
+            endpoint,
+            headers: _headers(token),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 404) {
+        lastError = Exception(_extractError(response.body, 'Failed to load notes'));
+        continue;
+      }
+
+      if (response.statusCode != 200) {
+        throw Exception(_extractError(response.body, 'Failed to load notes'));
+      }
+
+      final decoded = _decodeJson(response.body);
+      final notesList = _extractNotesList(decoded);
+      if (notesList == null) {
+        throw Exception('Invalid notes response');
+      }
+
+      return notesList
         .whereType<Map<String, dynamic>>()
         .map(Note.fromJson)
         .toList();
+    }
+
+    throw lastError ?? Exception('Failed to load notes');
   }
 
   Future<Note> createNote(Note note) async {
@@ -196,6 +217,21 @@ class NotesApiService {
       return cleaned;
     }
     return cleaned.substring(0, maxChars);
+  }
+
+  List<dynamic>? _extractNotesList(dynamic decoded) {
+    if (decoded is List) {
+      return decoded;
+    }
+
+    if (decoded is Map<String, dynamic>) {
+      final data = decoded['data'];
+      if (data is List) {
+        return data;
+      }
+    }
+
+    return null;
   }
 
   List<String> _limitStringList(

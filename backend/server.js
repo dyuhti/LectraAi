@@ -7,7 +7,9 @@ const fileUpload = require('express-fileupload');
 
 const app = express();
 
+app.set('trust proxy', true);
 app.use(cors());
+app.options('*', cors());
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 app.use(fileUpload({ limits: { fileSize: 50 * 1024 * 1024 } }));
@@ -31,7 +33,7 @@ app.get('/health', (req, res) => {
 // Feedback submission endpoint
 app.post('/feedback', (req, res) => {
   try {
-    const { name, email, feedback } = req.body;P
+    const { name, email, feedback } = req.body;
 
     // Validate feedback is required
     if (!feedback || !feedback.trim()) {
@@ -65,7 +67,7 @@ app.use('/api/quiz', require('./routes/quiz'));
 app.use('/api/reminders', require('./routes/reminders'));
 app.use('/transcribe', require('./routes/transcribe'));
 
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 8080;
 const mongoUri = process.env.MONGO_URI;
 
 if (!mongoUri) {

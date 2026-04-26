@@ -140,9 +140,10 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                             _RippleEffect(controller: _logoController),
                             // Main logo
                             Image.asset(
-                              'assets/images/logo.png',
+                              'assets/logo/icon.png',
                               width: 120,
                               height: 120,
+                              fit: BoxFit.contain,
                             ),
                           ],
                         ),

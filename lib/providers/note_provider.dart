@@ -29,11 +29,20 @@ class NoteProvider extends ChangeNotifier {
         ..addAll(notes);
       _error = null;
     } catch (e) {
-      _error = e.toString();
+      _error = _humanizeError(e);
     } finally {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  String _humanizeError(Object error) {
+    final message = error.toString();
+    const prefix = 'Exception: ';
+    if (message.startsWith(prefix)) {
+      return message.substring(prefix.length).trim();
+    }
+    return message;
   }
 
   Future<Note> createNote(Note note) async {

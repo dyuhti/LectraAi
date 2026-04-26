@@ -11,6 +11,7 @@ import 'package:smart_lecture_notes/providers/progress_provider.dart';
 import 'package:smart_lecture_notes/screens/my_notes_screen.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 import 'package:smart_lecture_notes/widgets/edit_note_dialog.dart';
+import 'package:smart_lecture_notes/widgets/tts_control_widget.dart';
 import 'package:smart_lecture_notes/utils/tts_text_builder.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 
@@ -118,7 +119,9 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
     final summary = (note?.summary ?? '').trim();
     final canDelete = note != null && note.id.trim().isNotEmpty && !_isDeleting;
     final canEdit = note != null && note.id.trim().isNotEmpty;
-    _publishScreenText(getScreenText(note));
+    final ttsText = getScreenText(note);
+    _publishScreenText(ttsText);
+    final isAccessibilityEnabled = context.watch<AccessibilityProvider>().isEnabled;
 
     final sections = <Widget>[];
     if (summary.isNotEmpty) {
@@ -199,7 +202,7 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -261,6 +264,13 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
             ...sections.expand(
               (section) => [section, const SizedBox(height: 16)],
             ),
+          if (!isAccessibilityEnabled) ...[
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: TtsControlWidget(text: ttsText),
+            ),
+          ],
         ],
       ),
       bottomNavigationBar: SafeArea(

@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/models/note.dart';
+import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
 import 'package:smart_lecture_notes/providers/note_provider.dart';
 import 'package:smart_lecture_notes/screens/note_detail_screen.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
+import 'package:smart_lecture_notes/widgets/tts_control_widget.dart';
+import 'package:smart_lecture_notes/utils/tts_text_builder.dart';
 
 class MyNotesScreen extends StatefulWidget {
   const MyNotesScreen({Key? key}) : super(key: key);
@@ -173,8 +176,43 @@ class _MyNotesScreenState extends State<MyNotesScreen> {
               },
             ),
           ),
+          if (!context.watch<AccessibilityProvider>().isEnabled)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: TtsControlWidget(
+                text: _getScreenText(),
+              ),
+            ),
         ],
       ),
+    );
+  }
+
+  String _getScreenText() {
+    final notes = context.read<NoteProvider>().notes;
+    final filteredNotes = _query.isEmpty
+        ? notes
+        : notes
+            .where((note) =>
+                note.title.toLowerCase().contains(_query) ||
+                note.summary.toLowerCase().contains(_query))
+            .toList();
+
+    if (filteredNotes.isEmpty) {
+      return buildStructuredText(
+        title: 'My Notes',
+        content: _query.isEmpty
+            ? 'No notes yet. Create your first note.'
+            : 'No notes found for \"$_query\".',
+        keyPoints: const [],
+      );
+    }
+
+    final titles = filteredNotes.take(3).map((note) => note.title).toList();
+    return buildStructuredText(
+      title: 'My Notes',
+      content: '${filteredNotes.length} notes available. Browse and open a note to see summary.',
+      keyPoints: titles,
     );
   }
 

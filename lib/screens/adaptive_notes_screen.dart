@@ -8,6 +8,7 @@ import 'package:smart_lecture_notes/routes/app_routes.dart';
 import 'package:smart_lecture_notes/services/ai_service.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 import 'package:smart_lecture_notes/utils/tts_text_builder.dart';
+import 'package:smart_lecture_notes/widgets/tts_control_widget.dart';
 
 class AdaptiveNotesScreen extends StatefulWidget {
   const AdaptiveNotesScreen({Key? key}) : super(key: key);
@@ -330,84 +331,6 @@ class _AdaptiveNotesScreenState extends State<AdaptiveNotesScreen> {
     );
   }
 
-  Widget _buildRevisionReminderCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.primary.withOpacity(0.2),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 2),
-            child: Icon(
-              Icons.notifications_active_outlined,
-              color: AppColors.primary,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Enable Revision Reminder',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.primaryDark,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Set spaced-repetition notifications for this note.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary.withOpacity(0.9),
-                    height: 1.25,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  height: 34,
-                  child: ElevatedButton.icon(
-                    onPressed: () => Navigator.of(context).pushNamed(
-                      AppRoutes.revisionReminder,
-                    ),
-                    icon: const Icon(Icons.schedule_rounded, size: 16),
-                    label: const Text('Configure'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      textStyle: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      elevation: 0,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildProgressStrip() {
     return Consumer<ProgressProvider>(
       builder: (context, progressProvider, _) {
@@ -481,8 +404,6 @@ class _AdaptiveNotesScreenState extends State<AdaptiveNotesScreen> {
                     ),
                   ),
           ),
-          const SizedBox(height: 14),
-          _buildRevisionReminderCard(),
         ],
       ),
     );
@@ -783,8 +704,6 @@ class _AdaptiveNotesScreenState extends State<AdaptiveNotesScreen> {
                               ),
                             ),
                           ],
-                          const SizedBox(height: 14),
-                          _buildRevisionReminderCard(),
                         ],
                       ),
                     ),
@@ -800,6 +719,13 @@ class _AdaptiveNotesScreenState extends State<AdaptiveNotesScreen> {
                 },
               ),
             ),
+            if (!context.watch<AccessibilityProvider>().isEnabled)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: TtsControlWidget(
+                  text: _buildTtsText(),
+                ),
+              ),
           ],
         ),
       ),
