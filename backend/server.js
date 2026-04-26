@@ -31,7 +31,7 @@ app.get('/health', (req, res) => {
 // Feedback submission endpoint
 app.post('/feedback', (req, res) => {
   try {
-    const { name, email, feedback } = req.body;
+    const { name, email, feedback } = req.body;P
 
     // Validate feedback is required
     if (!feedback || !feedback.trim()) {

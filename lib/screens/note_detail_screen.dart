@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:smart_lecture_notes/models/note.dart';
 import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
 import 'package:smart_lecture_notes/providers/note_provider.dart';
+import 'package:smart_lecture_notes/providers/progress_provider.dart';
 import 'package:smart_lecture_notes/screens/my_notes_screen.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 import 'package:smart_lecture_notes/widgets/edit_note_dialog.dart';
@@ -40,10 +41,28 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
   static const Color _neutralBody = Color(0xFF334155);
   static const Color _neutralMuted = Color(0xFF64748B);
 
+  late int _startTime;
+
   @override
   void initState() {
     super.initState();
     _currentNote = widget.note;
+    _startTime = DateTime.now().millisecondsSinceEpoch;
+  }
+
+  @override
+  void dispose() {
+    _sendStudyTime();
+    super.dispose();
+  }
+
+  void _sendStudyTime() {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final durationMinutes = ((now - _startTime) / 60000).round();
+    if (durationMinutes > 0) {
+      context.read<ProgressProvider>().addStudyTime(durationMinutes);
+      debugPrint('[TIMER] Sent $durationMinutes minutes of study time from Note Detail');
+    }
   }
 
   Note? _resolvedNote(BuildContext context) {

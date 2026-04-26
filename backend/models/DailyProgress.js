@@ -22,6 +22,10 @@ const DailyProgressSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  studyTime: {
+    type: Number,
+    default: 0, // in minutes
+  },
   updatedAt: {
     type: Date,
     default: Date.now,

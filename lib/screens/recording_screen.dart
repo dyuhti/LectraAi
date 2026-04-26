@@ -245,10 +245,15 @@ class _RecordLectureScreenState extends State<RecordLectureScreen>
         try {
           processed = await _apiService.processTranscript(transcript);
           
-          // Increment audio recording progress
+          // Increment audio recording progress with duration
           if (mounted) {
-            context.read<ProgressProvider>().incrementAudio();
-            print('[RECORDING] Audio progress incremented');
+            final durationMinutes = (_recordingSeconds / 60).round();
+            await context.read<ProgressProvider>().incrementAudio(duration: durationMinutes);
+            final progress = context.read<ProgressProvider>().progress;
+            print('Updated progress: $progress');
+            print('[RECORDING] Progress -> notes: ${progress.notesCreated}, audio: ${progress.audioRecorded}, quiz: ${progress.quizzesGenerated}, studyTime: ${progress.studyTime}');
+            setState(() {});
+            print('[RECORDING] Audio progress incremented with $durationMinutes minutes');
           }
         } catch (e) {
           print('[RECORDING] Transcript processing failed: $e');

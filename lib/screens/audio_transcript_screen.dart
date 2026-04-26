@@ -262,7 +262,11 @@ class _AudioTranscriptScreenState extends State<AudioTranscriptScreen> {
       
       // Refresh daily progress counts
       if (mounted) {
-        context.read<ProgressProvider>().refreshProgress();
+        await context.read<ProgressProvider>().refreshProgress();
+        final progress = context.read<ProgressProvider>().progress;
+        print('Updated progress: $progress');
+        print('[AI_NOTES] Progress -> notes: ${progress.notesCreated}, audio: ${progress.audioRecorded}, quiz: ${progress.quizzesGenerated}');
+        setState(() {});
       }
 
       print('[AI_NOTES] Note saved successfully to Mongo API');

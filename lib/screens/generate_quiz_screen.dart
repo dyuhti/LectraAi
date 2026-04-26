@@ -130,7 +130,11 @@ class _GenerateQuizScreenState extends State<GenerateQuizScreen> {
       print('[GenerateQuizScreen] Generation completed successfully!');
       // Increment quiz progress
       if (mounted) {
-        context.read<ProgressProvider>().incrementQuiz();
+        await context.read<ProgressProvider>().incrementQuiz();
+        final progress = context.read<ProgressProvider>().progress;
+        print('Updated progress: $progress');
+        print('[GenerateQuizScreen] Progress -> notes: ${progress.notesCreated}, audio: ${progress.audioRecorded}, quiz: ${progress.quizzesGenerated}');
+        setState(() {});
         print('[GenerateQuizScreen] Quiz progress incremented');
       }
     }

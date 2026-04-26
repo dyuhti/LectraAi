@@ -9,6 +9,7 @@ const router = express.Router();
 router.post('/process', async (req, res) => {
   try {
     const { userId } = req.body;
+    console.log('User ID:', userId);
     console.log('[AUDIO_API] Processing audio for user:', userId || 'None');
 
     if (!userId) return res.status(400).json({ error: 'userId is required' });
@@ -17,6 +18,7 @@ router.post('/process', async (req, res) => {
 
     // Update progress
     await updateDailyProgress(userId, 'audio');
+    console.log('Audio progress updated');
     console.log(`[AUDIO_API] ✅ Progress incremented for user ${userId}`);
 
     res.json({ success: true, message: 'Audio processed and progress updated' });

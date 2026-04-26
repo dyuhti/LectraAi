@@ -75,50 +75,83 @@ class ProgressApiService {
     }
   }
 
-  Future<void> updateAudioProgress() async {
+  Future<List<DailyProgress>> fetchWeeklyProgress() async {
     final userId = await _authService.getUserId();
-    if (userId == null) return;
+    if (userId == null) return [];
 
     try {
       final token = await _authService.getAuthToken();
-      final response = await _client.post(
-        Uri.parse('$_baseUrl/api/audio/process'),
+      final response = await _client.get(
+        Uri.parse('$_baseUrl/api/dashboard/weekly/$userId'),
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({'userId': userId}),
       ).timeout(const Duration(seconds: 10));
 
-      if (response.statusCode != 200) {
-        print('[ProgressApiService] Failed to update audio progress: ${response.body}');
+      print("Dashboard data: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => DailyProgress.fromJson(json)).toList();
       }
+      return [];
     } catch (e) {
-      print('[ProgressApiService] Error updating audio progress: $e');
+      print('[ProgressApiService] Error fetching weekly dashboard: $e');
+      return [];
     }
   }
 
-  Future<void> updateQuizProgress() async {
+  Future<void> updateProgress(String type, {int? duration}) async {
     final userId = await _authService.getUserId();
     if (userId == null) return;
 
     try {
       final token = await _authService.getAuthToken();
       final response = await _client.post(
-        Uri.parse('$_baseUrl/api/quiz/generate'),
+        Uri.parse('$_baseUrl/api/progress/update'),
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({'userId': userId}),
+        body: jsonEncode({
+          'userId': userId,
+          'type': type,
+          if (duration != null) 'duration': duration,
+        }),
       ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode != 200) {
-        print('[ProgressApiService] Failed to update quiz progress: ${response.body}');
+        print('[ProgressApiService] Failed to update progress: ${response.body}');
       }
     } catch (e) {
-      print('[ProgressApiService] Error updating quiz progress: $e');
+      print('[ProgressApiService] Error updating progress: $e');
     }
+  }
+
+  Future<void> syncDashboard() async {
+    final userId = await _authService.getUserId();
+    if (userId == null) return;
+
+    try {
+      final token = await _authService.getAuthToken();
+      final response = await _client.post(
+        Uri.parse('$_baseUrl/api/dashboard/sync/$userId'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      print("Sync dashboard response: ${response.body}");
+    } catch (e) {
+      print('[ProgressApiService] Error syncing dashboard: $e');
+    }
+  }
+
+  Future<void> storeProgress(int progressScore) async {
+    // This is now handled by backend sync, but keeping as a placeholder if needed
+    print('[ProgressApiService] storeProgress called with $progressScore (redundant due to backend sync)');
   }
 
   void dispose() {

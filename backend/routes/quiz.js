@@ -9,6 +9,7 @@ const router = express.Router();
 router.post('/generate', async (req, res) => {
   try {
     const { userId } = req.body;
+    console.log('User ID:', userId);
     console.log('[QUIZ_API] Generating quiz for user:', userId || 'None');
 
     if (!userId) return res.status(400).json({ error: 'userId is required' });
@@ -17,6 +18,7 @@ router.post('/generate', async (req, res) => {
 
     // Update progress
     await updateDailyProgress(userId, 'quiz');
+    console.log('Quiz progress updated');
     console.log(`[QUIZ_API] ✅ Progress incremented for user ${userId}`);
 
     res.json({ success: true, message: 'Quiz generated and progress updated' });

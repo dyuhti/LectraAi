@@ -9,6 +9,9 @@ import 'package:smart_lecture_notes/providers/document_provider.dart';
 import 'package:smart_lecture_notes/providers/progress_provider.dart';
 import 'package:smart_lecture_notes/providers/quiz_provider.dart';
 import 'package:smart_lecture_notes/utils/tts_text_builder.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
+import 'package:smart_lecture_notes/models/progress.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -30,10 +33,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late final AnimationController _ambient;
   late final AnimationController _shimmer;
   String _selectedText = '';
+  late int _startTime;
 
   @override
   void initState() {
     super.initState();
+    _startTime = DateTime.now().millisecondsSinceEpoch;
     _ambient = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1600),
@@ -43,15 +48,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       vsync: this,
       duration: const Duration(milliseconds: 2100),
     )..repeat();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await context.read<ProgressProvider>().refreshProgress();
+    });
   }
 
 
 
   @override
   void dispose() {
+    _sendStudyTime();
     _ambient.dispose();
     _shimmer.dispose();
     super.dispose();
+  }
+
+  void _sendStudyTime() {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final durationMinutes = ((now - _startTime) / 60000).round();
+    if (durationMinutes > 0) {
+      context.read<ProgressProvider>().addStudyTime(durationMinutes);
+      debugPrint('[TIMER] Sent $durationMinutes minutes of study time');
+    }
   }
 
   @override
@@ -1062,34 +1082,16 @@ class _TodayProgressCard extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Text(
-                "Today’s Study Progress",
+                "Today's Study Progress",
                 style: TextStyle(
                   color: navy,
                   fontSize: 14,
                   fontWeight: FontWeight.w900,
                 ),
               ),
-              const Spacer(),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: royal.withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: navy.withOpacity(0.06), width: 1),
-                ),
-                child: Text(
-                  'AI processed 1.2h',
-                  style: TextStyle(
-                    color: navy.withOpacity(0.86),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
           Consumer<ProgressProvider>(
             builder: (context, progressProvider, _) {
               final progress = progressProvider.progress;
@@ -1108,15 +1110,15 @@ class _TodayProgressCard extends StatelessWidget {
                 children: [
                   _StatChip(
                     icon: Icons.note_alt_outlined,
-                    text: '${progress.notesCreated} notes created',
+                    text: '${progress.notesCreated} Notes',
                   ),
                   _StatChip(
-                    icon: Icons.mic_none,
-                    text: '${progress.audioRecorded} audio recorded',
+                    icon: Icons.mic_none_rounded,
+                    text: '${progress.audioRecorded} Recordings',
                   ),
                   _StatChip(
                     icon: Icons.quiz_outlined,
-                    text: '${progress.quizzesGenerated} quiz generated',
+                    text: '${progress.quizzesGenerated} Quizzes',
                   ),
                 ],
               );

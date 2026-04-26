@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
 import 'package:smart_lecture_notes/models/note.dart';
 import 'package:smart_lecture_notes/providers/note_provider.dart';
+import 'package:smart_lecture_notes/providers/progress_provider.dart';
 import 'package:smart_lecture_notes/routes/app_routes.dart';
 import 'package:smart_lecture_notes/services/ai_service.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
@@ -17,6 +18,33 @@ class AdaptiveNotesScreen extends StatefulWidget {
 
 class _AdaptiveNotesScreenState extends State<AdaptiveNotesScreen> {
   final AiService _aiService = AiService();
+
+  late int _startTime;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTime = DateTime.now().millisecondsSinceEpoch;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await context.read<ProgressProvider>().refreshProgress();
+    });
+  }
+
+  @override
+  void dispose() {
+    _sendStudyTime();
+    super.dispose();
+  }
+
+  void _sendStudyTime() {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final durationMinutes = ((now - _startTime) / 60000).round();
+    if (durationMinutes > 0) {
+      context.read<ProgressProvider>().addStudyTime(durationMinutes);
+      debugPrint('[TIMER] Sent $durationMinutes minutes of study time from Adaptive Notes');
+    }
+  }
 
   static const TextStyle _bodyTextStyle = TextStyle(
     fontSize: 16,
@@ -380,6 +408,37 @@ class _AdaptiveNotesScreenState extends State<AdaptiveNotesScreen> {
     );
   }
 
+  Widget _buildProgressStrip() {
+    return Consumer<ProgressProvider>(
+      builder: (context, progressProvider, _) {
+        final progress = progressProvider.progress;
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+          color: Colors.white,
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _ProgressPill(
+                icon: Icons.note_alt_outlined,
+                label: '${progress.notesCreated} notes',
+              ),
+              _ProgressPill(
+                icon: Icons.mic_none,
+                label: '${progress.audioRecorded} audio',
+              ),
+              _ProgressPill(
+                icon: Icons.quiz_outlined,
+                label: '${progress.quizzesGenerated} quizzes',
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildStateContent({
     required String message,
     required bool needsBottomClearance,
@@ -527,6 +586,7 @@ class _AdaptiveNotesScreenState extends State<AdaptiveNotesScreen> {
                 ],
               ),
             ),
+            _buildProgressStrip(),
             Expanded(
               child: Builder(
                 builder: (context) {
@@ -742,6 +802,43 @@ class _AdaptiveNotesScreenState extends State<AdaptiveNotesScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ProgressPill extends StatelessWidget {
+  const _ProgressPill({
+    required this.icon,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.primary.withOpacity(0.14), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: AppColors.primary),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primaryDark,
+            ),
+          ),
+        ],
       ),
     );
   }

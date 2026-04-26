@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
+import 'dart:math';
 import 'package:smart_lecture_notes/models/note.dart';
 import 'package:smart_lecture_notes/models/progress.dart';
 import 'package:smart_lecture_notes/providers/note_provider.dart';
 import 'package:smart_lecture_notes/providers/progress_provider.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 
 class StudyDashboardScreen extends StatefulWidget {
   const StudyDashboardScreen({Key? key}) : super(key: key);
@@ -15,11 +18,23 @@ class StudyDashboardScreen extends StatefulWidget {
 }
 
 class _StudyDashboardScreenState extends State<StudyDashboardScreen> {
-  static const _days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  late int _startTime;
+  late String _randomQuote;
+
+  final List<String> _quotes = [
+    "Small progress is still progress.",
+    "Consistency beats intensity.",
+    "Every day is a chance to improve.",
+    "Success is built on daily habits.",
+    "Keep going, you're getting there.",
+    "Focus. Learn. Grow.",
+  ];
 
   @override
   void initState() {
     super.initState();
+    _startTime = DateTime.now().millisecondsSinceEpoch;
+    _randomQuote = _quotes[Random().nextInt(_quotes.length)];
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<NoteProvider>().loadNotes();
@@ -27,63 +42,39 @@ class _StudyDashboardScreenState extends State<StudyDashboardScreen> {
     });
   }
 
-  List<double> _buildWeeklyData(List<Note> notes) {
-    final today = DateTime.now();
-    final values = List<double>.filled(7, 0);
-
-    for (final note in notes) {
-      final diff = today.difference(note.createdAt).inDays;
-      if (diff >= 0 && diff < 7) {
-        final index = (today.weekday - 1 - diff) % 7;
-        final safeIndex = index < 0 ? index + 7 : index;
-        values[safeIndex] += 1;
-      }
-    }
-
-    return values;
+  @override
+  void dispose() {
+    _sendStudyTime();
+    super.dispose();
   }
 
-  String _formatStudyHours(List<Note> notes) {
-    if (notes.isEmpty) {
-      return '0';
+  void _sendStudyTime() {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final durationMinutes = ((now - _startTime) / 60000).round();
+    if (durationMinutes > 0) {
+      context.read<ProgressProvider>().addStudyTime(durationMinutes);
+      debugPrint('[TIMER] Sent $durationMinutes minutes of study time from Dashboard');
     }
-
-    final minutes = notes.length * 18;
-    final hours = minutes / 60;
-    return hours.toStringAsFixed(hours >= 10 ? 0 : 1);
   }
 
-  String _formatTodayProgress(DailyProgress progress) {
-    final todayCount = progress.notesCreated;
 
-    if (todayCount == 0) {
-      return 'No notes created today';
+
+
+
+  String _getDayName(String dateStr) {
+    try {
+      final date = DateTime.parse(dateStr);
+      return DateFormat('EEEE').format(date);
+    } catch (e) {
+      return 'N/A';
     }
-
-    return '$todayCount note${todayCount == 1 ? '' : 's'} created today';
   }
 
-  List<double> _buildWeeklyDataFromHistory(List<DailyProgress> history) {
-    final values = List<double>.filled(7, 0);
-    final today = DateTime.now();
-
-    // Map history to the last 7 days
-    for (int i = 0; i < 7; i++) {
-      final date = today.subtract(Duration(days: i));
-      final dateStr =
-          "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-
-      final record = history.firstWhere(
-        (h) => h.date == dateStr,
-        orElse: () => DailyProgress.empty(),
-      );
-
-      // Map back to Mon-Sun index (0-6)
-      final dayIndex = (date.weekday - 1) % 7;
-      values[dayIndex] = record.notesCreated.toDouble();
-    }
-
-    return values;
+  DailyProgress _getBestDay(List<DailyProgress> history) {
+    if (history.isEmpty) return DailyProgress.empty();
+    return history.reduce((a, b) {
+      return a.progressScore > b.progressScore ? a : b;
+    });
   }
 
   @override
@@ -107,156 +98,81 @@ class _StudyDashboardScreenState extends State<StudyDashboardScreen> {
         ),
         centerTitle: false,
       ),
-      body: Consumer2<NoteProvider, ProgressProvider>(
-        builder: (context, noteProvider, progressProvider, _) {
-              if (progressProvider.isLoading && noteProvider.notes.isEmpty) {
-                return const Center(
-                  child: CircularProgressIndicator(color: AppColors.primary),
-                );
-              }
+      body: Consumer<ProgressProvider>(
+        builder: (context, provider, _) {
+          if (provider.isLoading) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            );
+          }
 
-              final notes = noteProvider.notes;
-              final progress = progressProvider.progress;
-              final history = progressProvider.history;
-
-              final weeklyData = _buildWeeklyDataFromHistory(history);
-              final totalNotes = notes.length;
-              final studyHours = _formatStudyHours(notes);
-              final todayStatus = _formatTodayProgress(progress);
-              final maxValue = weeklyData.fold<double>(
-                  0, (max, value) => value > max ? value : max);
+          final history = provider.history;
+          final totalNotes = history.fold<int>(0, (sum, item) => sum + item.notesCreated);
+          final totalHours = history.fold<int>(0, (sum, item) => sum + item.studyTime) / 60.0;
 
           return RefreshIndicator(
             onRefresh: () async {
-              await noteProvider.loadNotes();
-              await progressProvider.refreshProgress();
+              await provider.refreshProgress();
             },
             color: AppColors.primary,
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
                           child: _StatCard(
-                            icon: Icons.note_outlined,
-                            label: 'Total Notes',
+                            title: 'Notes',
                             value: totalNotes.toString(),
+                            icon: Icons.note_add_outlined,
                           ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
                           child: _StatCard(
-                            icon: Icons.access_time,
-                            label: 'Study Hours',
-                            value: studyHours,
+                            title: 'Study Hours',
+                            value: totalHours.toStringAsFixed(1),
+                            icon: Icons.timer_outlined,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      todayStatus,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 24),
                     const Text(
-                      'Weekly Activity',
+                      'Weekly Study Activity',
                       style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
                         color: AppColors.primary,
+                        letterSpacing: 0.3,
                       ),
                     ),
                     const SizedBox(height: 16),
                     Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: AppDecorations.card(),
-                      child: Column(
-                        children: [
-                          SizedBox(
-                            height: 220,
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: List.generate(weeklyData.length, (index) {
-                                final value = weeklyData[index];
-                                final normalized = maxValue == 0 ? 0.0 : value / maxValue;
-                                final barHeight = 12 + (normalized * 120);
-                                return Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: [
-                                        AnimatedSwitcher(
-                                          duration: const Duration(milliseconds: 250),
-                                          child: Text(
-                                            value.toStringAsFixed(0),
-                                            key: ValueKey('$index-$value'),
-                                            style: const TextStyle(
-                                              color: AppColors.primary,
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        AnimatedContainer(
-                                          duration: const Duration(milliseconds: 350),
-                                          curve: Curves.easeOutCubic,
-                                          width: 18,
-                                          height: barHeight,
-                                          decoration: BoxDecoration(
-                                            gradient: const LinearGradient(
-                                              colors: [
-                                                AppColors.primaryLight,
-                                                AppColors.primary,
-                                              ],
-                                              begin: Alignment.topCenter,
-                                              end: Alignment.bottomCenter,
-                                            ),
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 10),
-                                        Text(
-                                          _days[index],
-                                          style: const TextStyle(
-                                            color: AppColors.primary,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              }),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          Text(
-                            noteProvider.notes.isEmpty
-                                ? 'No activity yet'
-                                : 'Study activity updates as you save notes',
-                            style: const TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
                           ),
                         ],
                       ),
+                      child: const SizedBox(
+                        height: 280,
+                        child: _WeeklyBarChart(),
+                      ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
+                    _buildInsightCard(history),
                   ],
                 ),
               ),
@@ -266,24 +182,27 @@ class _StudyDashboardScreenState extends State<StudyDashboardScreen> {
       ),
     );
   }
-}
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
+  Widget _buildInsightCard(List<DailyProgress> history) {
+    final bestDay = _getBestDay(history);
+    final hasData = history.any((h) => h.progressScore > 0);
 
-  final IconData icon;
-  final String label;
-  final String value;
+    if (!hasData) return const SizedBox.shrink();
 
-  @override
-  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: AppDecorations.card(),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -291,36 +210,204 @@ class _StatCard extends StatelessWidget {
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: AppDecorations.iconContainer(radius: 10),
-                child: Icon(
-                  icon,
-                  color: AppColors.primaryLight,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.auto_awesome,
+                  color: AppColors.primary,
                   size: 20,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
+              const Text(
+                'Weekly Insight',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            "You were most productive on ${_getDayName(bestDay.date)} 🔥",
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _randomQuote,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+              fontStyle: FontStyle.italic,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+
+  const _StatCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
               Text(
-                label,
+                title,
                 style: const TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
               ),
+              Icon(icon, size: 16, color: AppColors.primary.withOpacity(0.5)),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
             value,
             style: const TextStyle(
               color: AppColors.primary,
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1,
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _WeeklyBarChart extends StatelessWidget {
+  const _WeeklyBarChart({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<ProgressProvider>(
+      builder: (context, provider, _) {
+        final history = provider.history;
+        if (history.isEmpty) {
+          return const Center(child: Text('No activity data'));
+        }
+
+        double maxY = 50;
+        for (var d in history) {
+          double score = d.progressScore.toDouble();
+          if (score > maxY) maxY = score;
+        }
+        maxY = (maxY * 1.1).ceilToDouble();
+
+        return BarChart(
+          BarChartData(
+            alignment: BarChartAlignment.spaceAround,
+            maxY: maxY,
+            barTouchData: BarTouchData(
+              touchTooltipData: BarTouchTooltipData(
+                tooltipBgColor: AppColors.primaryDark,
+                getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                  return BarTooltipItem(
+                    'Score: ${rod.toY.round()}',
+                    const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  );
+                },
+              ),
+            ),
+            titlesData: FlTitlesData(
+              show: true,
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  getTitlesWidget: (value, meta) {
+                    final index = value.toInt();
+                    if (index < 0 || index >= history.length) return const SizedBox.shrink();
+                    final date = DateTime.parse(history[index].date);
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 12.0),
+                      child: Text(
+                        DateFormat('E').format(date),
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            ),
+            gridData: const FlGridData(show: false),
+            borderData: FlBorderData(show: false),
+            barGroups: history.asMap().entries.map((entry) {
+              final index = entry.key;
+              final data = entry.value;
+              final score = data.progressScore.toDouble();
+              
+              return BarChartGroupData(
+                x: index,
+                barRods: [
+                  BarChartRodData(
+                    toY: score,
+                    width: 18,
+                    borderRadius: BorderRadius.circular(6),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF3B82F6), Color(0xFF60A5FA)],
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                    ),
+                    backDrawRodData: BackgroundBarChartRodData(
+                      show: true,
+                      toY: maxY,
+                      color: const Color(0xFFF1F5F9),
+                    ),
+                  ),
+                ],
+              );
+            }).toList(),
+          ),
+          swapAnimationDuration: const Duration(milliseconds: 800),
+          swapAnimationCurve: Curves.easeInOutCubic,
+        );
+      },
     );
   }
 }
