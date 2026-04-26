@@ -9,7 +9,7 @@ class TranscriptionApiService {
         _baseUrl = baseUrl ??
             const String.fromEnvironment(
               'TRANSCRIBE_BASE_URL',
-              defaultValue: 'http://192.168.0.191:8003',
+              defaultValue: 'https://lectraai.onrender.com',
             );
 
   final http.Client _client;
