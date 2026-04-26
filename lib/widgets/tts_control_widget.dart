@@ -17,21 +17,48 @@ class TtsControlWidget extends StatefulWidget {
 }
 
 class _TtsControlWidgetState extends State<TtsControlWidget> {
-  static const double _sheetViewportFactor = 0.42;
-  static const double _sheetInitialSize = 0.58;
-  static const double _sheetMinSize = 0.44;
-  static const double _sheetMaxSize = 0.88;
+  static const double _sheetViewportFactor = 0.65;
+  static const double _sheetCollapsedSize = 0.08;
+  static const double _sheetExpandedSize = 0.5;
+  static const double _sheetCollapseThreshold = 0.1;
 
   final DraggableScrollableController _sheetController =
       DraggableScrollableController();
   final TtsService _tts = TtsService();
   double _speechRate = 0.5;
   bool _isPlaying = false;
+  bool _isExpanded = false;
+  double _lastExtent = _sheetCollapsedSize;
+
+  @override
+  void initState() {
+    super.initState();
+    _sheetController.addListener(_onSheetSizeChanged);
+  }
 
   @override
   void dispose() {
+    _sheetController.removeListener(_onSheetSizeChanged);
     _sheetController.dispose();
     super.dispose();
+  }
+
+  void _onSheetSizeChanged() {
+    if (!_sheetController.isAttached || !mounted) {
+      return;
+    }
+
+    final extent = _sheetController.size;
+    final isExpandedNow = extent > _sheetCollapseThreshold;
+
+    if ((extent - _lastExtent).abs() < 0.01 && isExpandedNow == _isExpanded) {
+      return;
+    }
+
+    setState(() {
+      _lastExtent = extent;
+      _isExpanded = isExpandedNow;
+    });
   }
 
   Future<void> _toggleSheet() async {
@@ -39,15 +66,12 @@ class _TtsControlWidgetState extends State<TtsControlWidget> {
       return;
     }
 
-    final current = _sheetController.size;
-    final target = current > ((_sheetMinSize + _sheetMaxSize) / 2)
-        ? _sheetMinSize
-        : _sheetMaxSize;
+    final target = _isExpanded ? _sheetCollapsedSize : _sheetExpandedSize;
 
     await _sheetController.animateTo(
       target,
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeOutCubic,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
     );
   }
 
@@ -74,24 +98,37 @@ class _TtsControlWidgetState extends State<TtsControlWidget> {
     final viewportHeight = MediaQuery.sizeOf(context).height * _sheetViewportFactor;
     return SizedBox(
       height: viewportHeight,
-      child: DraggableScrollableSheet(
-        controller: _sheetController,
-        initialChildSize: _sheetInitialSize,
-        minChildSize: _sheetMinSize,
-        maxChildSize: _sheetMaxSize,
-        snap: true,
-        snapSizes: const [_sheetMinSize, _sheetInitialSize, _sheetMaxSize],
-        expand: false,
-        builder: (context, scrollController) {
-          return _buildSurface(
-            child: ListView(
-              controller: scrollController,
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.all(16),
-              children: _buildSheetChildren(),
-            ),
-          );
+      child: NotificationListener<DraggableScrollableNotification>(
+        onNotification: (notification) {
+          final isExpandedNow = notification.extent > _sheetCollapseThreshold;
+          if (isExpandedNow != _isExpanded) {
+            setState(() => _isExpanded = isExpandedNow);
+          }
+          if ((notification.extent - _lastExtent).abs() > 0.01) {
+            _lastExtent = notification.extent;
+          }
+          return false;
         },
+        child: DraggableScrollableSheet(
+          controller: _sheetController,
+          initialChildSize: _sheetCollapsedSize,
+          minChildSize: _sheetCollapsedSize,
+          maxChildSize: _sheetExpandedSize,
+          snap: true,
+          snapAnimationDuration: const Duration(milliseconds: 250),
+          snapSizes: const [_sheetCollapsedSize, _sheetExpandedSize],
+          expand: false,
+          builder: (context, scrollController) {
+            return _buildSurface(
+              child: ListView(
+                controller: scrollController,
+                physics: const ClampingScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                children: _buildSheetChildren(),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -150,8 +187,12 @@ class _TtsControlWidgetState extends State<TtsControlWidget> {
   }
 
   List<Widget> _buildSheetChildren() {
-    return [
-      _buildDragHandle(),
+    final children = <Widget>[_buildDragHandle()];
+    if (!_isExpanded) {
+      return children;
+    }
+
+    children.addAll([
       Row(
         children: [
           Container(
@@ -181,71 +222,64 @@ class _TtsControlWidgetState extends State<TtsControlWidget> {
       const SizedBox(height: 12),
       const Divider(height: 1, color: AppColors.border),
       const SizedBox(height: 16),
-      Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Playback Speed',
-                  style: TextStyle(
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Playback Speed',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: AppColors.primaryDark,
+                  letterSpacing: 0.1,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${_speechRate.toStringAsFixed(1)}x',
+                  style: const TextStyle(
+                    color: AppColors.primary,
                     fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                    color: AppColors.primaryDark,
-                    letterSpacing: 0.1,
+                    fontSize: 12,
                   ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '${_speechRate.toStringAsFixed(1)}x',
-                    style: const TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            SliderTheme(
-              data: const SliderThemeData(
-                trackHeight: 6,
-                thumbShape: RoundSliderThumbShape(
-                  elevation: 2,
-                  enabledThumbRadius: 8,
-                ),
-                overlayShape: RoundSliderOverlayShape(
-                  overlayRadius: 14,
                 ),
               ),
-              child: Slider(
-                value: _speechRate,
-                min: 0.20,
-                max: 2.0,
-                divisions: 7,
-                activeColor: AppColors.primary,
-                inactiveColor: AppColors.primary.withOpacity(0.2),
-                onChanged: (val) {
-                  setState(() => _speechRate = val);
-                  _tts.setSpeechRate(val);
-                },
+            ],
+          ),
+          const SizedBox(height: 10),
+          SliderTheme(
+            data: const SliderThemeData(
+              trackHeight: 6,
+              thumbShape: RoundSliderThumbShape(
+                elevation: 2,
+                enabledThumbRadius: 8,
+              ),
+              overlayShape: RoundSliderOverlayShape(
+                overlayRadius: 14,
               ),
             ),
-          ],
-        ),
+            child: Slider(
+              value: _speechRate,
+              min: 0.20,
+              max: 2.0,
+              divisions: 7,
+              activeColor: AppColors.primary,
+              inactiveColor: AppColors.primary.withOpacity(0.2),
+              onChanged: (val) {
+                setState(() => _speechRate = val);
+                _tts.setSpeechRate(val);
+              },
+            ),
+          ),
+        ],
       ),
       const SizedBox(height: 16),
       Row(
@@ -275,8 +309,10 @@ class _TtsControlWidgetState extends State<TtsControlWidget> {
           ),
         ],
       ),
-      const SizedBox(height: 16),
-    ];
+      const SizedBox(height: 8),
+    ]);
+
+    return children;
   }
 
   Widget _buildControlButton(

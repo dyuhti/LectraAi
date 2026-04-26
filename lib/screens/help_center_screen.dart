@@ -72,7 +72,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
         elevation: 0,
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
         children: [
           Container(
             padding: const EdgeInsets.all(18),

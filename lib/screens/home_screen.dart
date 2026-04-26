@@ -57,12 +57,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
-    final height = MediaQuery.sizeOf(context).height;
     final padding = width < 380 ? 18.0 : 24.0;
     final isAccessibilityEnabled = context.watch<AccessibilityProvider>().isEnabled;
-    final voiceOverlayScrollReserve = isAccessibilityEnabled
-        ? (height * 0.16).clamp(110.0, 160.0)
-        : 0.0;
     _publishScreenText(_buildScreenText());
 
     return Scaffold(
@@ -78,78 +74,73 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   _selectedText = selected;
                 });
               },
-              child: AnimatedPadding(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOut,
-                padding: EdgeInsets.only(bottom: voiceOverlayScrollReserve),
-                child: CustomScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  slivers: [
-                    SliverPadding(
-                      padding: EdgeInsets.fromLTRB(padding, 20, padding, 28),
-                      sliver: SliverList(
-                        delegate: SliverChildListDelegate(
-                          [
-                            _TopHeader(
-                              onSettings: () =>
-                                  Navigator.of(context).pushNamed(AppRoutes.settings),
+              child: CustomScrollView(
+                physics: const BouncingScrollPhysics(),
+                slivers: [
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(padding, 20, padding, 28),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate(
+                        [
+                          _TopHeader(
+                            onSettings: () =>
+                                Navigator.of(context).pushNamed(AppRoutes.settings),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Your AI-powered lecture companion',
+                            style: TextStyle(
+                              color: _subtle,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
                             ),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'Your AI-powered lecture companion',
-                              style: TextStyle(
-                                color: _subtle,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                              ),
+                          ),
+                          const SizedBox(height: 14),
+                          _AccessibilityToggleCard(
+                            enabled: isAccessibilityEnabled,
+                            onChanged: (value) =>
+                                context.read<AccessibilityProvider>().toggle(value),
+                            selectedText: _selectedText,
+                          ),
+                          const SizedBox(height: 18),
+                          _FadeInOnBuild(
+                            delay: const Duration(milliseconds: 50),
+                            child: _HomeHeroCard(
+                              heroTag: _heroTag,
+                              ambient: _ambient,
+                              shimmer: _shimmer,
+                              navy: _navy,
+                              royal: _royal,
+                              radius: _radius,
+                              onTap: () => Navigator.of(context)
+                                  .pushNamed(AppRoutes.captureNotes),
                             ),
-                            const SizedBox(height: 14),
-                            _AccessibilityToggleCard(
-                              enabled: isAccessibilityEnabled,
-                              onChanged: (value) =>
-                                  context.read<AccessibilityProvider>().toggle(value),
-                              selectedText: _selectedText,
+                          ),
+                          const SizedBox(height: 16),
+                          _FadeInOnBuild(
+                            delay: const Duration(milliseconds: 200),
+                            child: _ViewNotesLayeredCard(
+                              navy: _navy,
+                              royal: _royal,
+                              radius: _radius,
+                              onTap: () => Navigator.of(context)
+                                  .pushNamed(AppRoutes.viewNotes),
                             ),
-                            const SizedBox(height: 18),
-                            _FadeInOnBuild(
-                              delay: const Duration(milliseconds: 50),
-                              child: _HomeHeroCard(
-                                heroTag: _heroTag,
-                                ambient: _ambient,
-                                shimmer: _shimmer,
-                                navy: _navy,
-                                royal: _royal,
-                                radius: _radius,
-                                onTap: () => Navigator.of(context)
-                                    .pushNamed(AppRoutes.captureNotes),
-                              ),
+                          ),
+                          const SizedBox(height: 22),
+                          const _FadeInOnBuild(
+                            delay: Duration(milliseconds: 260),
+                            child: _TodayProgressCard(
+                              navy: _navy,
+                              royal: _royal,
+                              radius: _radius,
                             ),
-                            const SizedBox(height: 16),
-                            _FadeInOnBuild(
-                              delay: const Duration(milliseconds: 200),
-                              child: _ViewNotesLayeredCard(
-                                navy: _navy,
-                                royal: _royal,
-                                radius: _radius,
-                                onTap: () => Navigator.of(context)
-                                    .pushNamed(AppRoutes.viewNotes),
-                              ),
-                            ),
-                            const SizedBox(height: 22),
-                            const _FadeInOnBuild(
-                              delay: Duration(milliseconds: 260),
-                              child: _TodayProgressCard(
-                                navy: _navy,
-                                royal: _royal,
-                                radius: _radius,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -360,15 +351,50 @@ class _TopHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const Text(
-          'Smart Notes',
-          style: TextStyle(
-            color: _HomeScreenState._navy,
-            fontSize: 30,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0.2,
-          ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // App logo (same as splash screen)
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    _HomeScreenState._royal.withOpacity(0.15),
+                    _HomeScreenState._navy.withOpacity(0.20),
+                  ],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: _HomeScreenState._royal.withOpacity(0.20),
+                    blurRadius: 12,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.auto_awesome,
+                size: 24,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Smart Notes',
+              style: TextStyle(
+                color: _HomeScreenState._navy,
+                fontSize: 30,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
         ),
         Material(
           color: Colors.transparent,

@@ -164,10 +164,7 @@ class _MyNotesScreenState extends State<MyNotesScreen> {
                         ),
                       )
                     : ListView.builder(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
                         itemCount: filteredNotes.length,
                         itemBuilder: (context, index) {
                           return _buildNoteCard(filteredNotes[index]);

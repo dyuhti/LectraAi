@@ -104,7 +104,7 @@ class _NotesScreenState extends State<NotesScreen> {
           }
 
           return ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
             itemCount: notes.length,
             itemBuilder: (context, index) {
               final note = notes[index];

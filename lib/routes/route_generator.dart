@@ -255,6 +255,7 @@ class AccessibilityRouteHost extends StatefulWidget {
 
 class _AccessibilityRouteHostState extends State<AccessibilityRouteHost> {
   static const double _overlayPadding = 16;
+  static const double _contentBottomInset = 100;
 
   @override
   Widget build(BuildContext context) {
@@ -264,16 +265,26 @@ class _AccessibilityRouteHostState extends State<AccessibilityRouteHost> {
 
     return Stack(
       children: [
-        _RouteTextCollector(
-          child: widget.page,
-          onTextExtracted: (text) {
-            if (!mounted || text.trim().isEmpty) return;
-            context.read<AccessibilityProvider>().setScreenTextIfCurrent(
-              context,
-              text,
-              priority: 1,
-            );
-          },
+        Positioned.fill(
+          child: ColoredBox(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            child: AnimatedPadding(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOut,
+              padding: EdgeInsets.only(bottom: showOverlay ? _contentBottomInset : 0),
+              child: _RouteTextCollector(
+                child: widget.page,
+                onTextExtracted: (text) {
+                  if (!mounted || text.trim().isEmpty) return;
+                  context.read<AccessibilityProvider>().setScreenTextIfCurrent(
+                    context,
+                    text,
+                    priority: 1,
+                  );
+                },
+              ),
+            ),
+          ),
         ),
         if (showOverlay)
           Align(

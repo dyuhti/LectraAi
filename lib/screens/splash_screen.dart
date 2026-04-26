@@ -321,7 +321,7 @@ class _SplashScreenState extends State<SplashScreen>
                           ).createShader(bounds);
                         },
                         child: const Text(
-                          'AI-powered note taking for modern classrooms',
+                          'Accessibility meets intelligent learning',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.white,
@@ -337,7 +337,7 @@ class _SplashScreenState extends State<SplashScreen>
 
                       // Benefit line
                       Text(
-                        'Capture, organize, and learn smarter',
+                        'AI that listens, understands, and supports you',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.68),

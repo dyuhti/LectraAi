@@ -7,7 +7,6 @@ import 'package:smart_lecture_notes/routes/app_routes.dart';
 import 'package:smart_lecture_notes/services/ai_service.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
 import 'package:smart_lecture_notes/utils/tts_text_builder.dart';
-import 'package:smart_lecture_notes/widgets/tts_control_widget.dart';
 
 class AdaptiveNotesScreen extends StatefulWidget {
   const AdaptiveNotesScreen({Key? key}) : super(key: key);
@@ -435,10 +434,7 @@ class _AdaptiveNotesScreenState extends State<AdaptiveNotesScreen> {
     final notes = context.watch<NoteProvider>().notes;
     _publishScreenText(_getScreenText(notes));
 
-    final ttsText = _buildTtsText();
-    final showVoiceControls = ttsText.isNotEmpty;
-    final needsBottomClearance =
-        showVoiceControls || context.watch<AccessibilityProvider>().isEnabled;
+    final needsBottomClearance = context.watch<AccessibilityProvider>().isEnabled;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -471,15 +467,6 @@ class _AdaptiveNotesScreenState extends State<AdaptiveNotesScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: showVoiceControls
-          ? SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                child: TtsControlWidget(text: ttsText),
-              ),
-            )
-          : null,
       body: SafeArea(
         child: Column(
           children: [
