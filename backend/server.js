@@ -73,6 +73,7 @@ app.use('/api/progress', require('./routes/progress'));
 app.use('/api/audio', require('./routes/audio'));
 app.use('/api/quiz', require('./routes/quiz'));
 app.use('/api/reminders', require('./routes/reminders'));
+app.use('/api', require('./routes/generateNotes'));
 app.use('/transcribe', require('./routes/transcribe'));
 
 const port = process.env.PORT || 8080;

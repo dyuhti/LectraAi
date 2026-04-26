@@ -1,7 +1,11 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:image/image.dart' as img;
 import 'package:path/path.dart' as p;
 import 'package:smart_lecture_notes/services/lecture_ai_service.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
@@ -11,23 +15,32 @@ enum _FileType { pdf, image, text }
 class DocumentProcessingService {
   static Future<Map<String, dynamic>> processFile(
     String path, {
+    Uint8List? fileBytes,
+    String? fileName,
     bool isExtract = true,
     bool isSummarize = true,
     bool isKeyword = true,
   }) async {
-    final fileType = _detectFileType(path);
-    debugPrint('DocumentProcessingService: path=$path type=$fileType');
+    final sourceName = path.isNotEmpty ? path : (fileName ?? '');
+    final fileType = _detectFileType(sourceName);
+    debugPrint('DocumentProcessingService: path=$path name=$sourceName type=$fileType bytes=${fileBytes?.length ?? 0}');
 
     String extractedText;
     switch (fileType) {
       case _FileType.pdf:
-        extractedText = await _extractTextFromPdf(path);
+        extractedText = fileBytes != null && fileBytes.isNotEmpty
+            ? await _extractTextFromPdfBytes(fileBytes)
+            : await _extractTextFromPdf(path);
         break;
       case _FileType.image:
-        extractedText = await _extractTextFromImage(path);
+        extractedText = fileBytes != null && fileBytes.isNotEmpty
+            ? await _extractTextFromImageBytes(fileBytes)
+            : await _extractTextFromImage(path);
         break;
       case _FileType.text:
-        extractedText = await _extractTextFromPlainFile(path);
+        extractedText = fileBytes != null && fileBytes.isNotEmpty
+            ? utf8.decode(fileBytes, allowMalformed: true)
+            : await _extractTextFromPlainFile(path);
         break;
     }
 
@@ -72,8 +85,8 @@ class DocumentProcessingService {
     };
   }
 
-  static _FileType _detectFileType(String path) {
-    final ext = p.extension(path).toLowerCase();
+  static _FileType _detectFileType(String pathOrName) {
+    final ext = p.extension(pathOrName).toLowerCase();
     if (ext == '.pdf') {
       return _FileType.pdf;
     }
@@ -83,6 +96,14 @@ class DocumentProcessingService {
     }
 
     return _FileType.text;
+  }
+
+  static Future<String> _extractTextFromPdfBytes(Uint8List bytes) async {
+    final document = PdfDocument(inputBytes: bytes);
+    final extractor = PdfTextExtractor(document);
+    final text = extractor.extractText();
+    document.dispose();
+    return text;
   }
 
   static Future<String> _extractTextFromPdf(String path) async {
@@ -101,6 +122,34 @@ class DocumentProcessingService {
 
   static Future<String> _extractTextFromImage(String path) async {
     final inputImage = InputImage.fromFilePath(path);
+    final recognizer = TextRecognizer();
+    try {
+      final recognizedText = await recognizer.processImage(inputImage);
+      return recognizedText.text;
+    } finally {
+      await recognizer.close();
+    }
+  }
+
+  static Future<String> _extractTextFromImageBytes(Uint8List bytes) async {
+    final decodedImage = img.decodeImage(bytes);
+    if (decodedImage == null) {
+      return '';
+    }
+
+    final inputImage = InputImage.fromBytes(
+      bytes: bytes,
+      metadata: InputImageMetadata(
+        size: Size(
+          decodedImage.width.toDouble(),
+          decodedImage.height.toDouble(),
+        ),
+        rotation: InputImageRotation.rotation0deg,
+        format: InputImageFormat.bgra8888,
+        bytesPerRow: decodedImage.width * 4,
+      ),
+    );
+
     final recognizer = TextRecognizer();
     try {
       final recognizedText = await recognizer.processImage(inputImage);

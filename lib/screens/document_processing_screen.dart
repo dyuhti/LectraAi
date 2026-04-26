@@ -4,10 +4,12 @@ import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/providers/document_provider.dart';
 import 'package:smart_lecture_notes/screens/preview_document_screen.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
+import 'dart:typed_data';
 
 class DocumentProcessingScreen extends StatefulWidget {
   final String fileName;
   final String? filePath;
+  final Uint8List? fileBytes;
   final bool isExtract;
   final bool isSummarize;
   final bool isKeyword;
@@ -15,6 +17,7 @@ class DocumentProcessingScreen extends StatefulWidget {
   const DocumentProcessingScreen({
     required this.fileName, Key? key,
     this.filePath,
+    this.fileBytes,
     this.isExtract = true,
     this.isSummarize = true,
     this.isKeyword = true,
@@ -47,10 +50,22 @@ class _DocumentProcessingScreenState extends State<DocumentProcessingScreen>
     final filePath = widget.filePath;
 
     if (filePath == null || filePath.isEmpty) {
-      provider.setError('Missing file path.');
+      if (widget.fileBytes == null || widget.fileBytes!.isEmpty) {
+        provider.setError('Missing file path.');
+      } else {
+        await provider.processFileBytes(
+          widget.fileBytes!,
+          fileName: widget.fileName,
+          isExtract: widget.isExtract,
+          isSummarize: widget.isSummarize,
+          isKeyword: widget.isKeyword,
+        );
+      }
     } else {
       await provider.processFile(
         filePath,
+        fileBytes: widget.fileBytes,
+        fileName: widget.fileName,
         isExtract: widget.isExtract,
         isSummarize: widget.isSummarize,
         isKeyword: widget.isKeyword,

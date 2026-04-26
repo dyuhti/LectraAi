@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 class AiService {
   static const String _baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://lectraai.onrender.com',
+    defaultValue: 'https://lectraai.onrender.com/api',
   );
   static const Duration _requestTimeout = Duration(seconds: 30);
 

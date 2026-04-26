@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
+import 'dart:typed_data';
 import 'package:smart_lecture_notes/services/web_file_picker.dart';
 import 'package:smart_lecture_notes/screens/document_processing_screen.dart';
 import 'package:smart_lecture_notes/routes/page_transitions.dart';
@@ -433,6 +434,7 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
               (f) => _PickedUpload(
                 name: f.name,
                 path: null,
+                  bytes: f.bytes,
                 sizeBytes: f.sizeBytes,
               ),
             )
@@ -457,6 +459,7 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
       final result = await FilePicker.platform.pickFiles(
         allowMultiple: true,
         type: FileType.custom,
+        withData: kIsWeb,
         allowedExtensions: const [
           'pdf',
           'jpg',
@@ -474,6 +477,7 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
             (f) => _PickedUpload(
               name: f.name,
               path: f.path,
+              bytes: f.bytes,
               sizeBytes: f.size,
             ),
           )
@@ -522,6 +526,7 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
           _PickedUpload(
             name: p.basename(image.path),
             path: image.path,
+            bytes: null,
             sizeBytes: bytes,
           ),
         );
@@ -625,6 +630,7 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
         DocumentProcessingScreen(
           fileName: primary.name,
           filePath: primary.path,
+          fileBytes: primary.bytes,
           isExtract: true,
           isSummarize: true,
           isKeyword: true,
@@ -637,11 +643,13 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
 class _PickedUpload {
   final String name;
   final String? path;
+  final Uint8List? bytes;
   final int sizeBytes;
 
   const _PickedUpload({
     required this.name,
     required this.path,
+    required this.bytes,
     required this.sizeBytes,
   });
 }

@@ -445,6 +445,7 @@ class _RecordLectureScreenState extends State<RecordLectureScreen>
                           width: double.infinity,
                           child: ElevatedButton.icon(
                             onPressed: () {
+                              if (!mounted) return;
                               Navigator.of(context).push(
                                 AppPageTransitions.fadeSlide(
                                   AudioTranscriptScreen(
