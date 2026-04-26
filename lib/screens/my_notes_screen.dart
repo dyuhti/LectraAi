@@ -105,25 +105,6 @@ class _MyNotesScreenState extends State<MyNotesScreen> {
           Expanded(
             child: Consumer<NoteProvider>(
               builder: (context, notesProvider, _) {
-                if (notesProvider.isLoading) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: AppColors.primary),
-                  );
-                }
-
-                if (notesProvider.error != null) {
-                  return Center(
-                    child: Text(
-                      notesProvider.error!,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 14,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  );
-                }
-
                 final notes = notesProvider.notes;
                 final filteredNotes = _query.isEmpty
                     ? notes

@@ -67,25 +67,108 @@ router.post('/save', async (req, res) => {
   }
 });
 
+// PUT /api/notes/:id - Update an existing note
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      title,
+      content,
+      summary,
+      transcript,
+      cleanedText,
+      subject,
+      keyPoints,
+      formulas,
+      examples,
+    } = req.body;
+
+    console.log(`[NOTES] Update request for id: ${id}`);
+    console.log('[NOTES] Update payload:', {
+      title,
+      contentPreview: typeof content === 'string' ? content.substring(0, 120) : content,
+      summaryPreview: typeof summary === 'string' ? summary.substring(0, 120) : summary,
+      transcriptPreview: typeof transcript === 'string' ? transcript.substring(0, 120) : transcript,
+      cleanedTextPreview:
+        typeof cleanedText === 'string' ? cleanedText.substring(0, 120) : cleanedText,
+      subject,
+      keyPointsCount: Array.isArray(keyPoints) ? keyPoints.length : undefined,
+      formulasCount: Array.isArray(formulas) ? formulas.length : undefined,
+      examplesCount: Array.isArray(examples) ? examples.length : undefined,
+    });
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid Note ID' });
+    }
+
+    const updatePayload = {
+      updatedAt: new Date(),
+    };
+
+    if (title !== undefined) {
+      updatePayload.title = typeof title === 'string' ? title.trim() : title;
+    }
+    if (content !== undefined) {
+      updatePayload.content = content;
+    }
+    if (summary !== undefined) {
+      updatePayload.summary = summary;
+    }
+    if (transcript !== undefined) {
+      updatePayload.transcript = transcript;
+    }
+    if (cleanedText !== undefined) {
+      updatePayload.cleanedText = cleanedText;
+    }
+    if (subject !== undefined) {
+      updatePayload.subject = subject;
+    }
+    if (keyPoints !== undefined) {
+      updatePayload.keyPoints = Array.isArray(keyPoints) ? keyPoints : [];
+    }
+    if (formulas !== undefined) {
+      updatePayload.formulas = Array.isArray(formulas) ? formulas : [];
+    }
+    if (examples !== undefined) {
+      updatePayload.examples = Array.isArray(examples) ? examples : [];
+    }
+
+    const updatedNote = await Note.findByIdAndUpdate(id, updatePayload, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!updatedNote) {
+      return res.status(404).json({ message: 'Note not found' });
+    }
+
+    console.log(`[NOTES] Note updated successfully: ${id}`);
+    return res.status(200).json(updatedNote);
+  } catch (error) {
+    console.error('[NOTES] Error updating note:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    console.log(`[NOTES] Delete request for id: ${id}`);
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: 'Invalid Note ID' });
+      return res.status(400).json({ message: 'Invalid Note ID' });
     }
 
-    const note = await Note.findByIdAndDelete(id);
-    if (!note) {
-      return res.status(404).json({ success: false, message: 'Note not found' });
+    const deletedNote = await Note.findByIdAndDelete(id);
+    if (!deletedNote) {
+      return res.status(404).json({ message: 'Note not found' });
     }
 
-    return res.json({
-      success: true,
-      message: 'Note deleted successfully'
-    });
+    console.log(`[NOTES] Note deleted successfully: ${id}`);
+    return res.status(200).json({ message: 'Deleted successfully' });
   } catch (error) {
     console.error('[NOTES] Error deleting note:', error);
-    return res.status(500).json({ success: false, message: 'Failed to delete note' });
+    return res.status(500).json({ error: error.message });
   }
 });
 

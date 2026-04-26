@@ -30,6 +30,10 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+app.get('/', (req, res) => {
+  res.send('🚀 LectraAI Backend is Live!');
+});
+
 // Feedback submission endpoint
 app.post('/feedback', (req, res) => {
   try {

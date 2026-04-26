@@ -51,11 +51,18 @@ class Note {
 
   Map<String, dynamic> toJson() {
     return {
+      '_id': id,
       'id': id,
       'userId': userId,
       'title': title,
+      'subject': subject,
       'transcript': transcript,
+      'content': content,
+      'cleanedText': cleanedText,
       'summary': summary,
+      'keyPoints': keyPoints,
+      'formulas': formulas,
+      'examples': examples,
       'fileUrl': fileUrl,
       'createdAt': createdAt.toIso8601String(),
     };
