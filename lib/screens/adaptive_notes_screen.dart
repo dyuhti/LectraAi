@@ -303,10 +303,142 @@ class _AdaptiveNotesScreenState extends State<AdaptiveNotesScreen> {
     );
   }
 
+  Widget _buildRevisionReminderCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.primary.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 2),
+            child: Icon(
+              Icons.notifications_active_outlined,
+              color: AppColors.primary,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Enable Revision Reminder',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primaryDark,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Set spaced-repetition notifications for this note.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textSecondary.withOpacity(0.9),
+                    height: 1.25,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 34,
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.of(context).pushNamed(
+                      AppRoutes.revisionReminder,
+                    ),
+                    icon: const Icon(Icons.schedule_rounded, size: 16),
+                    label: const Text('Configure'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      textStyle: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStateContent({
+    required String message,
+    required bool needsBottomClearance,
+    bool isLoading = false,
+  }) {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        16,
+        16,
+        needsBottomClearance ? 140 : 28,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  )
+                : Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 14),
+          _buildRevisionReminderCard(),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final notes = context.watch<NoteProvider>().notes;
     _publishScreenText(_getScreenText(notes));
+
+    final ttsText = _buildTtsText();
+    final showVoiceControls = ttsText.isNotEmpty;
+    final needsBottomClearance =
+        showVoiceControls || context.watch<AccessibilityProvider>().isEnabled;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -339,6 +471,15 @@ class _AdaptiveNotesScreenState extends State<AdaptiveNotesScreen> {
           ),
         ],
       ),
+      bottomNavigationBar: showVoiceControls
+          ? SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: TtsControlWidget(text: ttsText),
+              ),
+            )
+          : null,
       body: SafeArea(
         child: Column(
           children: [
@@ -403,26 +544,31 @@ class _AdaptiveNotesScreenState extends State<AdaptiveNotesScreen> {
               child: Builder(
                 builder: (context) {
                   if (notes.isEmpty) {
-                    return const Center(
-                      child: Text('No saved notes available yet'),
+                    return _buildStateContent(
+                      message: 'No saved notes available yet',
+                      needsBottomClearance: needsBottomClearance,
                     );
                   }
 
                   if (selectedNote == null) {
-                    return const Center(
-                      child: Text('Please select a note to begin'),
+                    return _buildStateContent(
+                      message: 'Please select a note to begin',
+                      needsBottomClearance: needsBottomClearance,
                     );
                   }
 
                   if (_isLoading) {
-                    return const Center(
-                      child: CircularProgressIndicator(color: AppColors.primary),
+                    return _buildStateContent(
+                      message: 'Generating adaptive notes...',
+                      needsBottomClearance: needsBottomClearance,
+                      isLoading: true,
                     );
                   }
 
                   if (_result == null) {
-                    return const Center(
-                      child: Text('Select a mode to generate adaptive notes'),
+                    return _buildStateContent(
+                      message: 'Select a mode to generate adaptive notes',
+                      needsBottomClearance: needsBottomClearance,
                     );
                   }
 
@@ -432,190 +578,177 @@ class _AdaptiveNotesScreenState extends State<AdaptiveNotesScreen> {
                     _result?['key_points'] ?? const <String>[],
                   );
 
-                  final ttsText = _buildTtsText();
-
-                  return SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Column(
-                      children: [
-                        // Premium Adaptive Learning Card
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  Colors.white,
-                                  Colors.white.withOpacity(0.95),
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.primary.withOpacity(0.08),
-                                  blurRadius: 16,
-                                  offset: const Offset(0, 4),
+                  final adaptiveCard = Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white,
+                            Colors.white.withOpacity(0.95),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.08),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(14),
                                 ),
-                              ],
-                            ),
-                            padding: const EdgeInsets.all(20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Header with icon
-                                Row(
+                                child: const Icon(
+                                  Icons.auto_awesome_rounded,
+                                  color: AppColors.primary,
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary.withOpacity(0.12),
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                      child: const Icon(
-                                        Icons.auto_awesome_rounded,
-                                        color: AppColors.primary,
-                                        size: 24,
+                                    const Text(
+                                      'Adaptive Notes',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w900,
+                                        color: AppColors.primaryDark,
+                                        letterSpacing: 0.2,
                                       ),
                                     ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Adaptive Notes',
-                                            style: const TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w900,
-                                              color: AppColors.primaryDark,
-                                              letterSpacing: 0.2,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            'Smart learning customized for you',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w500,
-                                              color: AppColors.textSecondary.withOpacity(0.8),
-                                              height: 1.2,
-                                            ),
-                                          ),
-                                        ],
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Smart learning customized for you',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppColors.textSecondary.withOpacity(0.8),
+                                        height: 1.2,
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 16),
-                                // Title Section
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withOpacity(0.06),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: AppColors.primary.withOpacity(0.1),
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    title,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w800,
-                                      color: AppColors.primary,
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 14),
-                                // Content Section
-                                _buildFormattedContent(content),
-                                const SizedBox(height: 14),
-                                // Key Points Section
-                                if (keyPoints.isNotEmpty) ...[
-                                  Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.green.withOpacity(0.06),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: Colors.green.withOpacity(0.2),
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Key Takeaways',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w700,
-                                            color: Colors.green.shade700,
-                                            letterSpacing: 0.3,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 10),
-                                        Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: keyPoints
-                                              .map<Widget>((p) => Padding(
-                                                    padding:
-                                                        const EdgeInsets.only(bottom: 8),
-                                                    child: Row(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment.start,
-                                                      children: [
-                                                        const Padding(
-                                                          padding: EdgeInsets.only(
-                                                            top: 3,
-                                                            right: 8,
-                                                          ),
-                                                          child: Icon(
-                                                            Icons.check_circle_rounded,
-                                                            size: 16,
-                                                            color: Colors.green,
-                                                          ),
-                                                        ),
-                                                        Expanded(
-                                                          child: Text(
-                                                            _sanitizeStructuredText(p),
-                                                            style: TextStyle(
-                                                              fontSize: 13,
-                                                              fontWeight:
-                                                                  FontWeight.w500,
-                                                              color: AppColors
-                                                                  .textPrimary,
-                                                              height: 1.35,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ))
-                                              .toList(),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.06),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppColors.primary.withOpacity(0.1),
+                                width: 1,
+                              ),
+                            ),
+                            child: Text(
+                              title,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primary,
+                                height: 1.4,
+                              ),
                             ),
                           ),
-                        ),
-                        // Voice Control Section
-                        if (ttsText.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                            child: TtsControlWidget(text: ttsText),
-                          ),
-                      ],
+                          const SizedBox(height: 14),
+                          _buildFormattedContent(content),
+                          const SizedBox(height: 14),
+                          if (keyPoints.isNotEmpty) ...[
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.green.withOpacity(0.06),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.green.withOpacity(0.2),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Key Takeaways',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.green.shade700,
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: keyPoints
+                                        .map<Widget>((p) => Padding(
+                                              padding: const EdgeInsets.only(bottom: 8),
+                                              child: Row(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  const Padding(
+                                                    padding: EdgeInsets.only(
+                                                      top: 3,
+                                                      right: 8,
+                                                    ),
+                                                    child: Icon(
+                                                      Icons.check_circle_rounded,
+                                                      size: 16,
+                                                      color: Colors.green,
+                                                    ),
+                                                  ),
+                                                  Expanded(
+                                                    child: Text(
+                                                      _sanitizeStructuredText(p),
+                                                      style: TextStyle(
+                                                        fontSize: 13,
+                                                        fontWeight: FontWeight.w500,
+                                                        color: AppColors.textPrimary,
+                                                        height: 1.35,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ))
+                                        .toList(),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 14),
+                          _buildRevisionReminderCard(),
+                        ],
+                      ),
                     ),
+                  );
+
+                  return SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: EdgeInsets.only(
+                      bottom: needsBottomClearance ? 140 : 28,
+                    ),
+                    child: adaptiveCard,
                   );
                 },
               ),

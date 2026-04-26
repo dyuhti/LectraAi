@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
+import 'package:smart_lecture_notes/providers/accessibility_provider.dart';
 import 'package:smart_lecture_notes/providers/document_provider.dart';
 import 'package:smart_lecture_notes/providers/progress_provider.dart';
 import 'package:smart_lecture_notes/providers/quiz_provider.dart';
@@ -248,6 +249,8 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
     final width = MediaQuery.sizeOf(context).width;
     final horizontalPadding = width < 380 ? 18.0 : 24.0;
     final heroHeight = width < 380 ? 200.0 : 220.0;
+    final hasAccessibilityOverlay =
+      context.watch<AccessibilityProvider>().isEnabled;
 
     final items = <Widget>[
       const SizedBox(height: 12),
@@ -386,6 +389,9 @@ class _CaptureCreateNotesScreenState extends State<CaptureCreateNotesScreen>
                 childCount: items.length,
               ),
             ),
+          ),
+          SliverToBoxAdapter(
+            child: SizedBox(height: hasAccessibilityOverlay ? 120 : 0),
           ),
         ],
       ),

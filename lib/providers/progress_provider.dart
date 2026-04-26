@@ -29,6 +29,7 @@ class ProgressProvider extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
   }
 
   Future<void> incrementAudio() async {

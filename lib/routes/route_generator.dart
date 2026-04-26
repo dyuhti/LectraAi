@@ -256,78 +256,31 @@ class AccessibilityRouteHost extends StatefulWidget {
 class _AccessibilityRouteHostState extends State<AccessibilityRouteHost> {
   static const double _overlayPadding = 16;
 
-  final GlobalKey _overlayKey = GlobalKey();
-  double _overlayHeight = 0;
-
-  void _measureOverlayHeight() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final context = _overlayKey.currentContext;
-      if (context == null) return;
-
-      final renderObject = context.findRenderObject();
-      if (renderObject is! RenderBox) return;
-
-      final measured = renderObject.size.height;
-      if ((measured - _overlayHeight).abs() < 1) {
-        return;
-      }
-
-      setState(() {
-        _overlayHeight = measured;
-      });
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final isEnabled = context.watch<AccessibilityProvider>().isEnabled;
     final screenText = context.watch<AccessibilityProvider>().screenText;
     final showOverlay = isEnabled && screenText.isNotEmpty;
 
-    if (showOverlay) {
-      _measureOverlayHeight();
-    } else if (_overlayHeight != 0) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        if (_overlayHeight == 0) return;
-        setState(() {
-          _overlayHeight = 0;
-        });
-      });
-    }
-
-    final reservedBottomSpace = showOverlay
-      ? (_overlayHeight > 0 ? _overlayHeight + (_overlayPadding * 2) : 220.0)
-        : 0.0;
-
     return Stack(
       children: [
-        AnimatedPadding(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
-          padding: EdgeInsets.only(bottom: reservedBottomSpace),
-          child: _RouteTextCollector(
-            child: widget.page,
-            onTextExtracted: (text) {
-              if (!mounted || text.trim().isEmpty) return;
-              context.read<AccessibilityProvider>().setScreenTextIfCurrent(
-                context,
-                text,
-                priority: 1,
-              );
-            },
-          ),
+        _RouteTextCollector(
+          child: widget.page,
+          onTextExtracted: (text) {
+            if (!mounted || text.trim().isEmpty) return;
+            context.read<AccessibilityProvider>().setScreenTextIfCurrent(
+              context,
+              text,
+              priority: 1,
+            );
+          },
         ),
         if (showOverlay)
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
               padding: const EdgeInsets.all(_overlayPadding),
-              child: KeyedSubtree(
-                key: _overlayKey,
-                child: TtsControlWidget(text: screenText),
-              ),
+              child: TtsControlWidget(text: screenText),
             ),
           ),
       ],

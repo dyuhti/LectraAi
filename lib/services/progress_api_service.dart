@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:smart_lecture_notes/models/study_dashboard.dart';
+import 'package:smart_lecture_notes/models/progress.dart';
 import 'package:smart_lecture_notes/services/auth_service.dart';
 
 class ProgressApiService {
@@ -20,10 +20,10 @@ class ProgressApiService {
   final AuthService _authService;
   final String _baseUrl;
 
-  Future<StudyDashboardData> fetchTodayProgress() async {
+  Future<DailyProgress> fetchTodayProgress() async {
     final userId = await _authService.getUserId();
     if (userId == null) {
-      return StudyDashboardData.empty();
+      return DailyProgress.empty();
     }
 
     try {
@@ -41,16 +41,16 @@ class ProgressApiService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return StudyDashboardData.fromJson(data);
+        return DailyProgress.fromJson(data);
       }
-      return StudyDashboardData.empty();
+      return DailyProgress.empty();
     } catch (e) {
       print('[ProgressApiService] Error fetching progress: $e');
-      return StudyDashboardData.empty();
+      return DailyProgress.empty();
     }
   }
 
-  Future<List<StudyDashboardData>> fetchHistory() async {
+  Future<List<DailyProgress>> fetchHistory() async {
     final userId = await _authService.getUserId();
     if (userId == null) return [];
 
@@ -66,7 +66,7 @@ class ProgressApiService {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => StudyDashboardData.fromJson(json)).toList();
+        return data.map((json) => DailyProgress.fromJson(json)).toList();
       }
       return [];
     } catch (e) {

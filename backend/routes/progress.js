@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const StudyDashboard = require('../models/StudyDashboard');
-const { getTodayDate } = require('../services/dashboardService');
+const DailyProgress = require('../models/DailyProgress');
+const { getTodayDate } = require('../services/progressService');
 
 const router = express.Router();
 
@@ -18,7 +18,7 @@ router.get('/:userId', async (req, res) => {
     }
 
     const today = getTodayDate();
-    const dashboard = await StudyDashboard.findOne({ userId, date: today });
+    const dashboard = await DailyProgress.findOne({ userId, date: today });
 
     if (!dashboard) {
       return res.json({
@@ -57,7 +57,7 @@ router.get('/history/:userId', async (req, res) => {
       return res.status(400).json({ error: 'Invalid User ID' });
     }
 
-    const history = await StudyDashboard.find({ userId })
+    const history = await DailyProgress.find({ userId })
       .sort({ date: -1 })
       .limit(7)
       .lean();

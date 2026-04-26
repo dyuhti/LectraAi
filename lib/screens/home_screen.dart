@@ -57,8 +57,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
+    final height = MediaQuery.sizeOf(context).height;
     final padding = width < 380 ? 18.0 : 24.0;
     final isAccessibilityEnabled = context.watch<AccessibilityProvider>().isEnabled;
+    final voiceOverlayScrollReserve = isAccessibilityEnabled
+        ? (height * 0.16).clamp(110.0, 160.0)
+        : 0.0;
     _publishScreenText(_buildScreenText());
 
     return Scaffold(
@@ -74,73 +78,78 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   _selectedText = selected;
                 });
               },
-              child: CustomScrollView(
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  SliverPadding(
-                    padding: EdgeInsets.fromLTRB(padding, 20, padding, 28),
-                    sliver: SliverList(
-                      delegate: SliverChildListDelegate(
-                        [
-                          _TopHeader(
-                            onSettings: () =>
-                                Navigator.of(context).pushNamed(AppRoutes.settings),
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Your AI-powered lecture companion',
-                            style: TextStyle(
-                              color: _subtle,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
+              child: AnimatedPadding(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                padding: EdgeInsets.only(bottom: voiceOverlayScrollReserve),
+                child: CustomScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    SliverPadding(
+                      padding: EdgeInsets.fromLTRB(padding, 20, padding, 28),
+                      sliver: SliverList(
+                        delegate: SliverChildListDelegate(
+                          [
+                            _TopHeader(
+                              onSettings: () =>
+                                  Navigator.of(context).pushNamed(AppRoutes.settings),
                             ),
-                          ),
-                          const SizedBox(height: 14),
-                          _AccessibilityToggleCard(
-                            enabled: isAccessibilityEnabled,
-                            onChanged: (value) =>
-                                context.read<AccessibilityProvider>().toggle(value),
-                            selectedText: _selectedText,
-                          ),
-                          const SizedBox(height: 18),
-                          _FadeInOnBuild(
-                            delay: const Duration(milliseconds: 50),
-                            child: _HomeHeroCard(
-                              heroTag: _heroTag,
-                              ambient: _ambient,
-                              shimmer: _shimmer,
-                              navy: _navy,
-                              royal: _royal,
-                              radius: _radius,
-                              onTap: () => Navigator.of(context)
-                                  .pushNamed(AppRoutes.captureNotes),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Your AI-powered lecture companion',
+                              style: TextStyle(
+                                color: _subtle,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          _FadeInOnBuild(
-                            delay: const Duration(milliseconds: 200),
-                            child: _ViewNotesLayeredCard(
-                              navy: _navy,
-                              royal: _royal,
-                              radius: _radius,
-                              onTap: () =>
-                                  Navigator.of(context).pushNamed(AppRoutes.viewNotes),
+                            const SizedBox(height: 14),
+                            _AccessibilityToggleCard(
+                              enabled: isAccessibilityEnabled,
+                              onChanged: (value) =>
+                                  context.read<AccessibilityProvider>().toggle(value),
+                              selectedText: _selectedText,
                             ),
-                          ),
-                          const SizedBox(height: 22),
-                          const _FadeInOnBuild(
-                            delay: Duration(milliseconds: 260),
-                            child: _TodayProgressCard(
-                              navy: _navy,
-                              royal: _royal,
-                              radius: _radius,
+                            const SizedBox(height: 18),
+                            _FadeInOnBuild(
+                              delay: const Duration(milliseconds: 50),
+                              child: _HomeHeroCard(
+                                heroTag: _heroTag,
+                                ambient: _ambient,
+                                shimmer: _shimmer,
+                                navy: _navy,
+                                royal: _royal,
+                                radius: _radius,
+                                onTap: () => Navigator.of(context)
+                                    .pushNamed(AppRoutes.captureNotes),
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 16),
+                            _FadeInOnBuild(
+                              delay: const Duration(milliseconds: 200),
+                              child: _ViewNotesLayeredCard(
+                                navy: _navy,
+                                royal: _royal,
+                                radius: _radius,
+                                onTap: () => Navigator.of(context)
+                                    .pushNamed(AppRoutes.viewNotes),
+                              ),
+                            ),
+                            const SizedBox(height: 22),
+                            const _FadeInOnBuild(
+                              delay: Duration(milliseconds: 260),
+                              child: _TodayProgressCard(
+                                navy: _navy,
+                                royal: _royal,
+                                radius: _radius,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -251,6 +260,18 @@ class _AccessibilityToggleCard extends StatelessWidget {
                     // color: Colors.black87, // If you want to use black87 instead, uncomment this line
                   ),
                 ),
+                if (hasSelection)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      'Selection ready for read aloud',
+                      style: TextStyle(
+                        color: _HomeScreenState._subtle.withOpacity(0.95),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -507,153 +528,156 @@ class _HomeHeroCard extends StatelessWidget {
         borderRadius: radius,
         decoration: decoration,
         scaleDown: 0.99,
-        // In a sliver, children can end up very narrow (e.g., 2-column layouts).
-        // Keep enough height for content while avoiding excessive blank space.
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 200),
-          child: AspectRatio(
-            aspectRatio: 16 / 9,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(radius),
-              child: Stack(
-                children: [
-                  // Abstract background: waves + floating sparkles
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: _HeroWavePainter(
-                        seed: 7,
-                        sparklePhase: ambient,
-                        royal: royal,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final maxWidth = constraints.maxWidth;
+            final cardHeight = (maxWidth / (16 / 9)).clamp(220.0, 290.0);
+
+            return SizedBox(
+              height: cardHeight,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(radius),
+                child: Stack(
+                  children: [
+                    // Abstract background: waves + floating sparkles
+                    Positioned.fill(
+                      child: CustomPaint(
+                        painter: _HeroWavePainter(
+                          seed: 7,
+                          sparklePhase: ambient,
+                          royal: royal,
+                        ),
                       ),
                     ),
-                  ),
 
-                  // Glass overlay (subtle)
-                  Positioned.fill(
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.white.withOpacity(0.10),
-                              Colors.white.withOpacity(0.04),
-                              Colors.white.withOpacity(0.06),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+                    // Glass overlay (subtle)
+                    Positioned.fill(
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.white.withOpacity(0.10),
+                                Colors.white.withOpacity(0.04),
+                                Colors.white.withOpacity(0.06),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
 
-                  // Shimmer pass
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: AnimatedBuilder(
-                        animation: shimmer,
-                        builder: (context, child) {
-                          final t = shimmer.value;
-                          return Opacity(
-                            opacity: 0.35,
-                            child: Transform.translate(
-                              offset: Offset((-1 + (2 * t)) * 220, 0),
-                              child: Transform.rotate(
-                                angle: -0.25,
-                                child: Container(
-                                  width: 170,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Colors.transparent,
-                                        Colors.white.withOpacity(0.30),
-                                        Colors.transparent,
-                                      ],
+                    // Shimmer pass
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: AnimatedBuilder(
+                          animation: shimmer,
+                          builder: (context, child) {
+                            final t = shimmer.value;
+                            return Opacity(
+                              opacity: 0.35,
+                              child: Transform.translate(
+                                offset: Offset((-1 + (2 * t)) * 220, 0),
+                                child: Transform.rotate(
+                                  angle: -0.25,
+                                  child: Container(
+                                    width: 170,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Colors.transparent,
+                                          Colors.white.withOpacity(0.30),
+                                          Colors.transparent,
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                          );
-                        },
+                            );
+                          },
+                        ),
                       ),
                     ),
-                  ),
 
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            _HeroIconChip(
-                              ambient: ambient,
-                              royal: royal,
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Adaptive Notes',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 0.2,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    'Premium AI workflows for lectures',
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: Colors.white.withOpacity(0.80),
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      height: 1.2,
-                                    ),
-                                  ),
-                                ],
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              _HeroIconChip(
+                                ambient: ambient,
+                                royal: royal,
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 18),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'Start capturing in seconds',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.78),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Adaptive Notes',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 0.2,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'Premium AI workflows for lectures',
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.80),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        height: 1.2,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            _CtaChipButton(
-                              label: 'Start Now',
-                              onTap: onTap,
-                            ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+                          const SizedBox(height: 18),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Start capturing in seconds',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.78),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              _CtaChipButton(
+                                label: 'Start Now',
+                                onTap: onTap,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );

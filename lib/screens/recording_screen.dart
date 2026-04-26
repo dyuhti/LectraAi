@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:smart_lecture_notes/providers/progress_provider.dart';
 import 'package:smart_lecture_notes/routes/page_transitions.dart';
 import 'package:smart_lecture_notes/screens/audio_transcript_screen.dart';
