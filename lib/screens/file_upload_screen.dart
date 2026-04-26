@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
+import 'package:smart_lecture_notes/services/web_file_picker.dart';
 import 'package:smart_lecture_notes/screens/document_processing_screen.dart';
 import 'package:smart_lecture_notes/routes/page_transitions.dart';
 import 'package:smart_lecture_notes/theme/app_theme.dart';
@@ -411,6 +413,47 @@ class _FileUploadScreenState extends State<FileUploadScreen> {
 
   Future<void> _pickFromFiles() async {
     try {
+      if (kIsWeb) {
+        final webFiles = await pickFilesForWeb(
+          allowedExtensions: const [
+            'pdf',
+            'jpg',
+            'jpeg',
+            'png',
+            'doc',
+            'docx',
+            'pptx',
+          ],
+          allowMultiple: true,
+        );
+        if (webFiles.isEmpty) return;
+
+        final picked = webFiles
+            .map(
+              (f) => _PickedUpload(
+                name: f.name,
+                path: null,
+                sizeBytes: f.sizeBytes,
+              ),
+            )
+            .toList();
+
+        final oversized =
+            picked.where((file) => file.sizeBytes > _maxUploadSizeBytes).toList();
+        if (oversized.isNotEmpty) {
+          Get.snackbar(
+            'File too large',
+            'File too large. Max size is 10MB.',
+            backgroundColor: Colors.red.shade700,
+            colorText: Colors.white,
+          );
+          return;
+        }
+
+        await _simulateFileUpload(selectedFiles: picked);
+        return;
+      }
+
       final result = await FilePicker.platform.pickFiles(
         allowMultiple: true,
         type: FileType.custom,

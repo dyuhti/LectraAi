@@ -86,7 +86,6 @@ app.*.map.json
 **/ios/Runner/GeneratedPluginRegistrant.*
 
 # Web
-lib/generated_plugin_registrant.dart
 
 # Symbolication related
 app.*.symbols

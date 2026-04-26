@@ -26,6 +26,10 @@ app.use((req, res, next) => {
   next();
 });
 
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', message: 'Backend is running' });
+});
+
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
