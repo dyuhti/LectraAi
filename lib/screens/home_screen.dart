@@ -356,32 +356,14 @@ class _TopHeader extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // App logo (same as splash screen)
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    _HomeScreenState._royal.withOpacity(0.15),
-                    _HomeScreenState._navy.withOpacity(0.20),
-                  ],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: _HomeScreenState._royal.withOpacity(0.20),
-                    blurRadius: 12,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.auto_awesome,
-                size: 24,
-                color: Colors.white,
+            // App logo (from assets)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.asset(
+                'assets/images/logo.png',
+                width: 48,
+                height: 48,
+                fit: BoxFit.cover,
               ),
             ),
             const SizedBox(width: 12),
