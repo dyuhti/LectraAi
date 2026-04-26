@@ -1374,6 +1374,80 @@ async def process_image(request: Request, file: Optional[UploadFile] = File(defa
         )
 
 
+def _serialize_note_document(note: dict) -> dict:
+    serialized = dict(note)
+
+    if "_id" in serialized:
+        serialized["_id"] = str(serialized["_id"])
+    if "userId" in serialized:
+        serialized["userId"] = str(serialized["userId"])
+
+    created_at = serialized.get("createdAt")
+    if isinstance(created_at, datetime):
+        serialized["createdAt"] = created_at.isoformat()
+
+    updated_at = serialized.get("updatedAt")
+    if isinstance(updated_at, datetime):
+        serialized["updatedAt"] = updated_at.isoformat()
+
+    return serialized
+
+
+@app.get("/api/notes")
+async def get_all_notes():
+    if notes_collection is None:
+        logger.error("[GET_NOTES] MongoDB not available")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Database connection failed"},
+        )
+
+    try:
+        notes = list(notes_collection.find().sort("createdAt", -1))
+        serialized_notes = [_serialize_note_document(note) for note in notes]
+        return JSONResponse(serialized_notes)
+    except Exception as e:
+        logger.error(f"[GET_NOTES] Exception: {str(e)}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to fetch notes"},
+        )
+
+
+@app.get("/api/notes/{user_id}")
+async def get_user_notes(user_id: str):
+    if notes_collection is None:
+        logger.error("[GET_USER_NOTES] MongoDB not available")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": "Database connection failed"},
+        )
+
+    if not ObjectId.is_valid(user_id):
+        return JSONResponse(
+            status_code=400,
+            content={"success": False, "message": "Invalid User ID"},
+        )
+
+    try:
+        notes = list(
+            notes_collection.find({"userId": ObjectId(user_id)}).sort("createdAt", -1)
+        )
+        serialized_notes = [_serialize_note_document(note) for note in notes]
+        return JSONResponse(
+            {
+                "success": True,
+                "data": serialized_notes,
+            }
+        )
+    except Exception as e:
+        logger.error(f"[GET_USER_NOTES] Exception: {str(e)}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": "Failed to fetch notes"},
+        )
+
+
 @app.post("/save-transcript")
 async def save_transcript(payload: SaveTranscriptRequest):
     """
